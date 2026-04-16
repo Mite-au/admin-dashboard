@@ -3,35 +3,61 @@
 @tailwind utilities;
 
 html, body { height: 100%; }
-body { @apply bg-ink-50 text-ink-900 antialiased; }
+body { @apply bg-page text-ink-900 antialiased; }
 
-/* Table styling */
-.table-wrap { @apply overflow-x-auto rounded-xl border border-ink-100 bg-white; }
-.data-table { @apply w-full text-sm; }
+/* ── Cards ───────────────────────────────────────────────────────────── */
+.card-shell {
+  @apply rounded-card bg-white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+.card-inner {
+  @apply rounded-2xl border border-ink-100 bg-white;
+}
+
+/* ── Pill inputs ─────────────────────────────────────────────────────── */
+.pill-input {
+  @apply w-full rounded-full border border-ink-200 bg-white px-5 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:border-ink-400 focus:ring-2 focus:ring-ink-200;
+}
+.pill-select {
+  @apply w-full rounded-full border border-ink-200 bg-white px-5 py-2.5 text-sm text-ink-900 appearance-none focus:outline-none focus:border-ink-400 focus:ring-2 focus:ring-ink-200;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.btn { @apply inline-flex items-center justify-center gap-2 text-sm font-medium transition-colors; }
+.btn-primary-pill {
+  @apply rounded-full bg-ink-800 text-white px-7 py-2.5 hover:bg-ink-900;
+}
+.btn-pill-ghost {
+  @apply rounded-full border border-ink-200 bg-white text-ink-700 px-5 py-2 hover:bg-ink-50;
+}
+.btn-pill-dark {
+  @apply rounded-full bg-ink-800 text-white px-5 py-2 hover:bg-ink-900;
+}
+.btn-icon {
+  @apply inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white text-ink-700 px-3.5 py-2 text-sm hover:bg-ink-50;
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────── */
+.data-table {
+  @apply w-full text-sm text-ink-900;
+}
 .data-table thead th {
-  @apply bg-ink-50 text-left font-medium text-ink-500 px-4 py-3 border-b border-ink-100 whitespace-nowrap;
+  @apply bg-ink-50 text-ink-900 font-semibold text-xs uppercase tracking-wide px-4 py-3.5 text-left whitespace-nowrap;
 }
+.data-table thead th:first-child { @apply rounded-l-xl; }
+.data-table thead th:last-child { @apply rounded-r-xl; }
 .data-table tbody td {
-  @apply px-4 py-3 border-b border-ink-100 text-ink-700;
+  @apply px-4 py-3 border-b border-ink-100 whitespace-nowrap align-middle;
 }
-.data-table tbody tr:hover { @apply bg-ink-50/60; }
+.data-table tbody tr:last-child td { @apply border-b-0; }
+.data-table tbody tr:hover td { @apply bg-ink-50/60; }
 
-/* Pill tabs */
-.pill {
-  @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium border border-ink-100 text-ink-500 hover:bg-ink-50 cursor-pointer;
+/* ── Status pills ────────────────────────────────────────────────────── */
+.pill-status {
+  @apply inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium;
 }
-.pill-active { @apply bg-brand-600 text-white border-brand-600 hover:bg-brand-700; }
-
-.badge { @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium; }
-.badge-green { @apply bg-emerald-50 text-emerald-700; }
-.badge-red { @apply bg-rose-50 text-rose-700; }
-.badge-amber { @apply bg-amber-50 text-amber-700; }
-.badge-gray { @apply bg-ink-100 text-ink-700; }
-.badge-blue { @apply bg-blue-50 text-blue-700; }
-
-.btn { @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors; }
-.btn-primary { @apply bg-brand-600 text-white hover:bg-brand-700; }
-.btn-ghost { @apply text-ink-700 hover:bg-ink-100; }
-.btn-danger { @apply bg-danger text-white hover:opacity-90; }
-
-.card { @apply rounded-xl border border-ink-100 bg-white p-5; }
+.pill-success { @apply text-success bg-green-50; }
+.pill-warning { @apply text-warning bg-amber-50; }
+.pill-danger { @apply text-danger bg-pink-50; }
+.pill-neutral { @apply text-ink-700 bg-ink-100; }
+.pill-info { @apply text-warning bg-amber-50; }

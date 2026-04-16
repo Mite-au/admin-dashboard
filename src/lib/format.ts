@@ -12,3 +12,21 @@ export function formatMoney(value: number, currency = 'AUD') {
 export function formatNumber(value: number) {
   return new Intl.NumberFormat('en-AU').format(value);
 }
+
+/**
+ * Render an ISO 3166-1 alpha-2 country code (e.g. "AU", "KR") as a
+ * localised display name. Falls back to the raw code if the Intl API
+ * can't resolve it or if the input isn't a 2-char code. Backend stores
+ * `user_profiles.nationality` as `CHAR(2)`.
+ */
+export function formatCountry(code: string | null | undefined): string {
+  if (!code) return '—';
+  const upper = code.trim().toUpperCase();
+  if (upper.length !== 2) return upper;
+  try {
+    const dn = new Intl.DisplayNames(['en'], { type: 'region' });
+    return dn.of(upper) ?? upper;
+  } catch {
+    return upper;
+  }
+}
