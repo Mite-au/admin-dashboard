@@ -1,16 +1,23 @@
 import { LogOut, User as UserIcon } from 'lucide-react';
 import { cookies } from 'next/headers';
+import Link from 'next/link';
 
-export async function Topbar({ breadcrumbs }: { breadcrumbs: string[] }) {
+export type Breadcrumb = { label: string; href: string };
+
+export async function Topbar({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
   const account = await getAccountLabel();
   return (
     <header className="flex items-center justify-between px-8 pt-7 pb-5">
       <div className="flex items-center gap-3 text-sm font-medium">
-        <span className="text-brand-600 font-bold tracking-wide">MITE Admin</span>
+        <Link href="/users" className="text-brand-600 font-bold tracking-wide hover:underline">
+          MITE Admin
+        </Link>
         {breadcrumbs.map((b, i) => (
           <span key={i} className="flex items-center gap-3 text-ink-700">
             <span className="text-ink-300">/</span>
-            {b}
+            <Link href={b.href} className="hover:underline">
+              {b.label}
+            </Link>
           </span>
         ))}
       </div>

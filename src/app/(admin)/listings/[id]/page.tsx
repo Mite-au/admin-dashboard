@@ -13,7 +13,12 @@ export default async function ListingDetailPage({
 
   return (
     <>
-      <Topbar breadcrumbs={['Listing', 'List detail']} />
+      <Topbar
+        breadcrumbs={[
+          { label: 'Listing', href: '/listings' },
+          { label: 'List detail', href: `/listings/${id}` },
+        ]}
+      />
       <PageHeader title="List detail" />
       <ListingDetailClient post={post} />
     </>
