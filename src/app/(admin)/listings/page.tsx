@@ -31,7 +31,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Sea
 
   return (
     <>
-      <Topbar breadcrumbs={['Listing']} />
+      <Topbar breadcrumbs={[{ label: 'Listing', href: '/listings' }]} />
       <PageHeader title="Listing" />
       <ListingsClient data={data} filters={filters} />
     </>

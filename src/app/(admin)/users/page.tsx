@@ -23,7 +23,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
 
   return (
     <>
-      <Topbar breadcrumbs={['User']} />
+      <Topbar breadcrumbs={[{ label: 'User', href: '/users' }]} />
       <PageHeader title="User" />
       <UsersClient data={data} filters={filters} />
     </>

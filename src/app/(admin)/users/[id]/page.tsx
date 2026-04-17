@@ -13,7 +13,12 @@ export default async function UserDetailPage({
 
   return (
     <>
-      <Topbar breadcrumbs={['User', 'User detail']} />
+      <Topbar
+        breadcrumbs={[
+          { label: 'User', href: '/users' },
+          { label: 'User detail', href: `/users/${id}` },
+        ]}
+      />
       <PageHeader title="User detail" />
       <UserDetailClient user={user} sold={sold} />
     </>

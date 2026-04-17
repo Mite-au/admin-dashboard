@@ -4,6 +4,7 @@ export default function NotificationPage() {
   return (
     <StubPage
       breadcrumb="Notification"
+      href="/notification"
       title="Notification"
       description="Notification composer and delivery log — coming soon."
     />

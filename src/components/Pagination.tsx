@@ -55,18 +55,18 @@ export function Pagination({
   );
 }
 
-/** Returns a compact page list — always shows up to 10 pages inline if possible,
- *  otherwise collapses with `…`. */
+/** Fixed 7-slot page list: bookends + either a 5-number run or
+ *  ellipses that keep the control the same width on every page. */
 function buildPageList(current: number, total: number): (number | '…')[] {
-  if (total <= 10) {
+  const SLOTS = 7;
+  if (total <= SLOTS) {
     return Array.from({ length: total }, (_, i) => i + 1);
   }
-  const out: (number | '…')[] = [1];
-  const start = Math.max(2, current - 2);
-  const end = Math.min(total - 1, current + 2);
-  if (start > 2) out.push('…');
-  for (let p = start; p <= end; p++) out.push(p);
-  if (end < total - 1) out.push('…');
-  out.push(total);
-  return out;
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '…', total];
+  }
+  if (current >= total - 3) {
+    return [1, '…', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '…', current - 1, current, current + 1, '…', total];
 }

@@ -30,7 +30,7 @@ export default async function ThreadsPage({ searchParams }: { searchParams: Sear
 
   return (
     <>
-      <Topbar breadcrumbs={['Thread']} />
+      <Topbar breadcrumbs={[{ label: 'Thread', href: '/threads' }]} />
       <PageHeader title="Thread" />
       <ThreadsClient data={data} filters={filters} />
     </>

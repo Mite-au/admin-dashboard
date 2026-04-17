@@ -23,7 +23,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
 
   return (
     <>
-      <Topbar breadcrumbs={['Transactions']} />
+      <Topbar breadcrumbs={[{ label: 'Transactions', href: '/transactions' }]} />
       <PageHeader title="Transactions" />
       <TransactionsClient data={data} filters={filters} />
     </>
