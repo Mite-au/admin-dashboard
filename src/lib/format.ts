@@ -19,6 +19,12 @@ export function formatNumber(value: number) {
  * can't resolve it or if the input isn't a 2-char code. Backend stores
  * `user_profiles.nationality` as `CHAR(2)`.
  */
+/** Backend sometimes returns placeholder strings like "pending" for unprocessed
+ *  uploads. Only treat http(s) URLs or rooted paths as displayable. */
+export function isImageSrc(src: unknown): src is string {
+  return typeof src === 'string' && /^(https?:\/\/|\/)/.test(src);
+}
+
 export function formatCountry(code: string | null | undefined): string {
   if (!code) return '—';
   const upper = code.trim().toUpperCase();

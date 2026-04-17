@@ -2,11 +2,12 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronDown, Download, RotateCcw, Trash2, MoreVertical } from 'lucide-react';
 import { DetailTabs } from '@/components/DetailTabs';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Pagination } from '@/components/Pagination';
-import { formatCountry, formatDate, formatMoney } from '@/lib/format';
+import { formatCountry, formatDate, formatMoney, isImageSrc } from '@/lib/format';
 import type { AdminPost, AdminUser, Paged } from '@/lib/types';
 
 type TabKey = 'sold' | 'purchased' | 'thread' | 'chat' | 'reports' | 'logs';
@@ -26,7 +27,7 @@ export function UserDetailClient({
       <section className="card-inner lg:col-span-4 p-6 space-y-6">
         <div className="flex items-center gap-5">
           <div className="h-20 w-20 rounded-full bg-ink-100 flex items-center justify-center overflow-hidden">
-            {user.avatarUrl ? (
+            {isImageSrc(user.avatarUrl) ? (
               <Image
                 src={user.avatarUrl}
                 alt=""
@@ -230,6 +231,7 @@ function InfoField({
 }
 
 function ItemsTable({ posts, kind }: { posts: AdminPost[]; kind: 'sold' | 'purchased' }) {
+  const router = useRouter();
   return (
     <div>
       <table className="data-table">
@@ -247,8 +249,12 @@ function ItemsTable({ posts, kind }: { posts: AdminPost[]; kind: 'sold' | 'purch
         </thead>
         <tbody>
           {posts.map((p) => (
-            <tr key={p.id}>
-              <td>
+            <tr
+              key={p.id}
+              className="cursor-pointer"
+              onClick={() => router.push(`/listings/${p.id}`)}
+            >
+              <td onClick={(e) => e.stopPropagation()}>
                 <input type="checkbox" className="h-4 w-4 rounded border-ink-300" />
               </td>
               <td className="text-ink-700">

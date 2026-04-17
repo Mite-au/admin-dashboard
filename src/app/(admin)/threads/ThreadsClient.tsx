@@ -1,56 +1,99 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState, useTransition } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatDate, formatNumber } from '@/lib/format';
 import type { AdminThread, Paged } from '@/lib/types';
+import type { ThreadFilters } from '@/lib/fetchers';
 
-export function ThreadsClient({ data }: { data: Paged<AdminThread> }) {
-  const [name, setName] = useState('');
-  const [type, setType] = useState('');
-  const [page, setPage] = useState(data.page);
+export function ThreadsClient({
+  data,
+  filters,
+}: {
+  data: Paged<AdminThread>;
+  filters: ThreadFilters;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [, startTransition] = useTransition();
 
-  const rows = useMemo(
-    () =>
-      data.items.filter((t) => {
-        if (name && !t.name.toLowerCase().includes(name.toLowerCase())) return false;
-        if (type && type !== 'all' && t.type !== type) return false;
-        return true;
-      }),
-    [data.items, name, type],
+  const [name, setName] = useState(filters.name ?? '');
+  const [type, setType] = useState(filters.type ?? '');
+  const [minMembers, setMinMembers] = useState(
+    filters.minMembers !== undefined ? String(filters.minMembers) : '',
   );
+  const [memberId, setMemberId] = useState(filters.memberId ?? '');
+
+  const pushFilters = (next: Partial<ThreadFilters>) => {
+    const merged: Record<string, string> = {};
+    const final: Record<string, string | number | undefined> = {
+      name,
+      type,
+      minMembers: minMembers === '' ? undefined : Number(minMembers),
+      memberId,
+      page: filters.page,
+      ...next,
+    };
+    for (const [k, v] of Object.entries(final)) {
+      if (v === undefined || v === null || v === '') continue;
+      merged[k] = String(v);
+    }
+    const qs = new URLSearchParams(merged).toString();
+    startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname));
+  };
+
+  const onSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    pushFilters({ page: 1 });
+  };
+
+  const rows = data.items;
 
   return (
     <div className="px-8 pb-8 space-y-6">
-      <SearchCard title="Thread Search" total={data.total} label="threads">
-        <SearchField label="Name">
-          <input
-            className="pill-input"
-            placeholder="Thread name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </SearchField>
-        <SearchField label="Type">
-          <select
-            className="pill-select"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
-            <option value="">All types</option>
-            <option value="suburb">Suburb</option>
-            <option value="interest">Interest</option>
-          </select>
-        </SearchField>
-        <SearchField label="Min members">
-          <input className="pill-input" placeholder="0" />
-        </SearchField>
-        <SearchField label="Member ID">
-          <input className="pill-input" placeholder="m124324" />
-        </SearchField>
-      </SearchCard>
+      <form onSubmit={onSearch}>
+        <SearchCard title="Thread Search" total={data.total} label="threads">
+          <SearchField label="Name">
+            <input
+              className="pill-input"
+              placeholder="Thread name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </SearchField>
+          <SearchField label="Type">
+            <select
+              className="pill-select"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+            >
+              <option value="">All types</option>
+              <option value="suburb">Suburb</option>
+              <option value="interest">Interest</option>
+            </select>
+          </SearchField>
+          <SearchField label="Min members">
+            <input
+              className="pill-input"
+              placeholder="0"
+              inputMode="numeric"
+              value={minMembers}
+              onChange={(e) => setMinMembers(e.target.value)}
+            />
+          </SearchField>
+          <SearchField label="Member ID">
+            <input
+              className="pill-input"
+              placeholder="m124324"
+              value={memberId}
+              onChange={(e) => setMemberId(e.target.value)}
+            />
+          </SearchField>
+        </SearchCard>
+      </form>
 
       <table className="data-table">
         <thead>
@@ -91,9 +134,9 @@ export function ThreadsClient({ data }: { data: Paged<AdminThread> }) {
       </table>
 
       <Pagination
-        page={page}
+        page={data.page}
         totalPages={Math.max(1, Math.ceil(data.total / data.pageSize))}
-        onChange={setPage}
+        onChange={(p) => pushFilters({ page: p })}
       />
     </div>
   );

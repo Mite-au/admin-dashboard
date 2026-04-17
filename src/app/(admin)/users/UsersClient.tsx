@@ -1,29 +1,52 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useState, useTransition } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
+import type { UserFilters } from '@/lib/fetchers';
 import type { AdminUser, Paged } from '@/lib/types';
 
-export function UsersClient({ data }: { data: Paged<AdminUser> }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [memberId, setMemberId] = useState('');
-  const [page, setPage] = useState(data.page);
+export function UsersClient({
+  data,
+  filters,
+}: {
+  data: Paged<AdminUser>;
+  filters: UserFilters;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [, startTransition] = useTransition();
+
+  const [name, setName] = useState(filters.name ?? '');
+  const [email, setEmail] = useState(filters.email ?? '');
+  const [phone, setPhone] = useState(filters.phone ?? '');
+  const [memberId, setMemberId] = useState(filters.memberId ?? '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const rows = useMemo(() => {
-    return data.items.filter((u) => {
-      if (name && !u.name.toLowerCase().includes(name.toLowerCase())) return false;
-      if (email && !(u.email ?? '').toLowerCase().includes(email.toLowerCase())) return false;
-      if (phone && !(u.phone ?? '').includes(phone)) return false;
-      if (memberId && !u.id.includes(memberId)) return false;
-      return true;
-    });
-  }, [data.items, name, email, phone, memberId]);
+  const pushFilters = (next: Partial<UserFilters>) => {
+    const merged: Record<string, string> = {};
+    const final = {
+      name,
+      email,
+      phone,
+      memberId,
+      page: filters.page,
+      ...next,
+    };
+    for (const [k, v] of Object.entries(final)) {
+      if (v === undefined || v === null || v === '') continue;
+      merged[k] = String(v);
+    }
+    const qs = new URLSearchParams(merged).toString();
+    startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname));
+  };
+
+  const onSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    pushFilters({ page: 1 });
+  };
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -36,40 +59,42 @@ export function UsersClient({ data }: { data: Paged<AdminUser> }) {
 
   return (
     <div className="px-8 pb-8 space-y-6">
-      <SearchCard title="User Search" total={data.total} label="users">
-        <SearchField label="Name">
-          <input
-            className="pill-input"
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </SearchField>
-        <SearchField label="Email">
-          <input
-            className="pill-input"
-            placeholder="mite@mite.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </SearchField>
-        <SearchField label="Phone">
-          <input
-            className="pill-input"
-            placeholder="0412737483"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-        </SearchField>
-        <SearchField label="Member ID">
-          <input
-            className="pill-input"
-            placeholder="m124324"
-            value={memberId}
-            onChange={(e) => setMemberId(e.target.value)}
-          />
-        </SearchField>
-      </SearchCard>
+      <form onSubmit={onSearch}>
+        <SearchCard title="User Search" total={data.total} label="users">
+          <SearchField label="Name">
+            <input
+              className="pill-input"
+              placeholder="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </SearchField>
+          <SearchField label="Email">
+            <input
+              className="pill-input"
+              placeholder="mite@mite.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </SearchField>
+          <SearchField label="Phone">
+            <input
+              className="pill-input"
+              placeholder="0412737483"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </SearchField>
+          <SearchField label="Member ID">
+            <input
+              className="pill-input"
+              placeholder="m124324"
+              value={memberId}
+              onChange={(e) => setMemberId(e.target.value)}
+            />
+          </SearchField>
+        </SearchCard>
+      </form>
 
       <div>
         <table className="data-table">
@@ -85,9 +110,13 @@ export function UsersClient({ data }: { data: Paged<AdminUser> }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((u) => (
-              <tr key={u.id}>
-                <td>
+            {data.items.map((u) => (
+              <tr
+                key={u.id}
+                className="cursor-pointer"
+                onClick={() => router.push(`/users/${u.id}`)}
+              >
+                <td onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-ink-300 text-ink-800 focus:ring-0"
@@ -95,11 +124,7 @@ export function UsersClient({ data }: { data: Paged<AdminUser> }) {
                     onChange={() => toggle(u.id)}
                   />
                 </td>
-                <td className="font-medium">
-                  <Link href={`/users/${u.id}`} className="hover:underline">
-                    {u.name}
-                  </Link>
-                </td>
+                <td className="font-medium">{u.name}</td>
                 <td className="text-ink-700">{u.email ?? '—'}</td>
                 <td className="text-ink-700">{u.phone ?? '—'}</td>
                 <td className="text-ink-700">m{u.id}</td>
@@ -109,7 +134,7 @@ export function UsersClient({ data }: { data: Paged<AdminUser> }) {
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && (
+            {data.items.length === 0 && (
               <tr>
                 <td colSpan={7} className="text-center text-ink-500 py-10">
                   No users match your filters.
@@ -121,9 +146,9 @@ export function UsersClient({ data }: { data: Paged<AdminUser> }) {
       </div>
 
       <Pagination
-        page={page}
+        page={data.page}
         totalPages={Math.max(1, Math.ceil(data.total / data.pageSize))}
-        onChange={setPage}
+        onChange={(p) => pushFilters({ page: p })}
       />
     </div>
   );

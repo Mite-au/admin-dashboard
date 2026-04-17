@@ -39,7 +39,7 @@ export function DetailTabs({
                 isActive ? 'bg-ink-800 text-white' : 'bg-ink-100 text-ink-700',
               )}
             >
-              {t.count ?? 'nn'}
+              {t.count ?? 0}
             </span>
             {isActive && (
               <span className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-ink-900 rounded-full" />
