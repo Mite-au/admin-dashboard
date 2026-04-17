@@ -7,13 +7,13 @@ import { Download, Trash2, MoreVertical } from 'lucide-react';
 import { DetailTabs } from '@/components/DetailTabs';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Pagination } from '@/components/Pagination';
-import { formatDate, formatMoney } from '@/lib/format';
+import { formatDate, formatMoney, isImageSrc } from '@/lib/format';
 import type { AdminPost } from '@/lib/types';
 
-type TabKey = 'sold' | 'purchased' | 'thread' | 'chat' | 'reports' | 'logs';
+type TabKey = 'transaction' | 'chat' | 'reports' | 'logs';
 
 export function ListingDetailClient({ post }: { post: AdminPost }) {
-  const [tab, setTab] = useState<TabKey>('purchased');
+  const [tab, setTab] = useState<TabKey>('transaction');
 
   return (
     <div className="px-8 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -25,7 +25,7 @@ export function ListingDetailClient({ post }: { post: AdminPost }) {
               key={i}
               className="relative aspect-square rounded-md overflow-hidden bg-ink-100"
             >
-              {src && (
+              {isImageSrc(src) && (
                 <Image
                   src={src}
                   alt=""
@@ -67,9 +67,7 @@ export function ListingDetailClient({ post }: { post: AdminPost }) {
           active={tab}
           onChange={(k) => setTab(k as TabKey)}
           tabs={[
-            { key: 'sold', label: 'Items sold' },
-            { key: 'purchased', label: 'Items Purchased' },
-            { key: 'thread', label: 'Thread' },
+            { key: 'transaction', label: 'Transaction' },
             { key: 'chat', label: 'Chat' },
             { key: 'reports', label: 'Reports', count: post.reportsCount },
             { key: 'logs', label: 'Logs' },
@@ -94,7 +92,7 @@ export function ListingDetailClient({ post }: { post: AdminPost }) {
           <EmptyTab label="Activity" />
         </div>
 
-        <Pagination page={1} totalPages={10} />
+        <Pagination page={1} totalPages={1} />
       </section>
     </div>
   );

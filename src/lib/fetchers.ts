@@ -1,13 +1,4 @@
-import { apiOr } from './api';
-import {
-  mockOverview,
-  mockPost,
-  mockPosts,
-  mockThreads,
-  mockTransactions,
-  mockUser,
-  mockUsers,
-} from './mock';
+import { api } from './api';
 import type {
   AdminPost,
   AdminThread,
@@ -19,46 +10,76 @@ import type {
 
 /**
  * Server-side fetchers used by RSC pages. Each talks to the admin endpoint on
- * the NestJS backend, with a mock fallback so the UI stays renderable during
- * development. Replace the mocks once the backend endpoints land.
+ * the NestJS backend. Any failure (auth, network, 5xx) propagates up so the
+ * caller sees the real error instead of silently rendering stale data.
  */
 
-export const getOverview = () =>
-  apiOr<OverviewStats>('/admin/overview', mockOverview());
+/** Turn a filter object into a query string, skipping empty values. */
+function qs(params: Record<string, string | number | undefined | null>): string {
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '') continue;
+    parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+  }
+  return parts.length ? `?${parts.join('&')}` : '';
+}
 
-export const getUsers = (page = 1, pageSize = 12, status?: string, q?: string) =>
-  apiOr<Paged<AdminUser>>(
-    `/admin/users?page=${page}&pageSize=${pageSize}` +
-      (status ? `&status=${status}` : '') +
-      (q ? `&q=${encodeURIComponent(q)}` : ''),
-    mockUsers(page, pageSize),
-  );
+export type UserFilters = {
+  page?: number;
+  pageSize?: number;
+  name?: string;
+  email?: string;
+  phone?: string;
+  memberId?: string;
+  status?: string;
+};
 
-export const getUser = (id: string) =>
-  apiOr<AdminUser>(`/admin/users/${id}`, mockUser(id));
+export type PostFilters = {
+  page?: number;
+  pageSize?: number;
+  title?: string;
+  priceMin?: number;
+  priceMax?: number;
+  category?: string;
+  memberId?: string;
+  status?: string;
+};
+
+export type TransactionFilters = {
+  page?: number;
+  pageSize?: number;
+  postTitle?: string;
+  buyer?: string;
+  seller?: string;
+  transactionId?: string;
+};
+
+export type ThreadFilters = {
+  page?: number;
+  pageSize?: number;
+  name?: string;
+  type?: string;
+  minMembers?: number;
+  memberId?: string;
+};
+
+export const getOverview = () => api<OverviewStats>('/admin/overview');
+
+export const getUsers = (filters: UserFilters = {}) =>
+  api<Paged<AdminUser>>(`/admin/users${qs({ pageSize: 15, ...filters })}`);
+
+export const getUser = (id: string) => api<AdminUser>(`/admin/users/${id}`);
 
 export const getUserPosts = (id: string) =>
-  apiOr<Paged<AdminPost>>(`/admin/users/${id}/posts`, mockPosts(1, 6));
+  api<Paged<AdminPost>>(`/admin/users/${id}/posts`);
 
-export const getPosts = (page = 1, pageSize = 12, status?: string, q?: string) =>
-  apiOr<Paged<AdminPost>>(
-    `/admin/posts?page=${page}&pageSize=${pageSize}` +
-      (status ? `&status=${status}` : '') +
-      (q ? `&q=${encodeURIComponent(q)}` : ''),
-    mockPosts(page, pageSize),
-  );
+export const getPosts = (filters: PostFilters = {}) =>
+  api<Paged<AdminPost>>(`/admin/posts${qs({ pageSize: 15, ...filters })}`);
 
-export const getPost = (id: string) =>
-  apiOr<AdminPost>(`/admin/posts/${id}`, mockPost(id));
+export const getPost = (id: string) => api<AdminPost>(`/admin/posts/${id}`);
 
-export const getTransactions = (page = 1, pageSize = 12) =>
-  apiOr<Paged<AdminTransaction>>(
-    `/admin/transactions?page=${page}&pageSize=${pageSize}`,
-    mockTransactions(page, pageSize),
-  );
+export const getTransactions = (filters: TransactionFilters = {}) =>
+  api<Paged<AdminTransaction>>(`/admin/transactions${qs({ pageSize: 15, ...filters })}`);
 
-export const getThreads = (page = 1, pageSize = 12, status?: string) =>
-  apiOr<Paged<AdminThread>>(
-    `/admin/threads?page=${page}&pageSize=${pageSize}` + (status ? `&status=${status}` : ''),
-    mockThreads(page, pageSize),
-  );
+export const getThreads = (filters: ThreadFilters = {}) =>
+  api<Paged<AdminThread>>(`/admin/threads${qs({ pageSize: 15, ...filters })}`);

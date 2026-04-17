@@ -12,6 +12,7 @@ export function Pagination({
   totalPages: number;
   onChange?: (p: number) => void;
 }) {
+  if (totalPages <= 1) return null;
   const pages = buildPageList(page, totalPages);
 
   return (

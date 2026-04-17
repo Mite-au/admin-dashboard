@@ -1,36 +1,63 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useState, useTransition } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ChevronDown } from 'lucide-react';
 import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
-import { formatDate, formatMoney } from '@/lib/format';
+import { formatDate, formatMoney, isImageSrc } from '@/lib/format';
+import type { PostFilters } from '@/lib/fetchers';
 import type { AdminPost, Paged } from '@/lib/types';
 
-export function ListingsClient({ data }: { data: Paged<AdminPost> }) {
-  const [title, setTitle] = useState('');
-  const [priceMin, setPriceMin] = useState('');
-  const [priceMax, setPriceMax] = useState('');
-  const [category, setCategory] = useState('');
-  const [memberId, setMemberId] = useState('');
-  const [page, setPage] = useState(data.page);
+export function ListingsClient({
+  data,
+  filters,
+}: {
+  data: Paged<AdminPost>;
+  filters: PostFilters;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [, startTransition] = useTransition();
+
+  const [title, setTitle] = useState(filters.title ?? '');
+  const [priceMin, setPriceMin] = useState(
+    filters.priceMin !== undefined ? String(filters.priceMin) : '',
+  );
+  const [priceMax, setPriceMax] = useState(
+    filters.priceMax !== undefined ? String(filters.priceMax) : '',
+  );
+  const [category, setCategory] = useState(filters.category ?? '');
+  const [memberId, setMemberId] = useState(filters.memberId ?? '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const rows = useMemo(() => {
-    return data.items.filter((p) => {
-      if (title && !p.title.toLowerCase().includes(title.toLowerCase())) return false;
-      if (priceMin && p.price < Number(priceMin)) return false;
-      if (priceMax && p.price > Number(priceMax)) return false;
-      if (category && category !== 'all' && p.category !== category) return false;
-      if (memberId && !p.seller.id.includes(memberId)) return false;
-      return true;
-    });
-  }, [data.items, title, priceMin, priceMax, category, memberId]);
-
   const categories = Array.from(new Set(data.items.map((p) => p.category)));
+
+  const pushFilters = (next: Partial<Record<string, string | number | undefined>>) => {
+    const merged: Record<string, string> = {};
+    const final = {
+      title,
+      priceMin: priceMin || undefined,
+      priceMax: priceMax || undefined,
+      category,
+      memberId,
+      page: filters.page,
+      ...next,
+    };
+    for (const [k, v] of Object.entries(final)) {
+      if (v === undefined || v === null || v === '') continue;
+      merged[k] = String(v);
+    }
+    const qs = new URLSearchParams(merged).toString();
+    startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname));
+  };
+
+  const onSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    pushFilters({ page: 1 });
+  };
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -43,61 +70,63 @@ export function ListingsClient({ data }: { data: Paged<AdminPost> }) {
 
   return (
     <div className="px-8 pb-8 space-y-6">
-      <SearchCard title="Listing Search" total={data.total} label="listings">
-        <SearchField label="Item title">
-          <input
-            className="pill-input"
-            placeholder="Item title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </SearchField>
-        <SearchField label="Price">
-          <div className="flex items-center gap-2">
+      <form onSubmit={onSearch}>
+        <SearchCard title="Listing Search" total={data.total} label="listings">
+          <SearchField label="Item title">
             <input
               className="pill-input"
-              placeholder="Min"
-              value={priceMin}
-              onChange={(e) => setPriceMin(e.target.value)}
+              placeholder="Item title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
             />
-            <span className="text-ink-500">-</span>
+          </SearchField>
+          <SearchField label="Price">
+            <div className="flex items-center gap-2">
+              <input
+                className="pill-input"
+                placeholder="Min"
+                value={priceMin}
+                onChange={(e) => setPriceMin(e.target.value)}
+              />
+              <span className="text-ink-500">-</span>
+              <input
+                className="pill-input"
+                placeholder="Max"
+                value={priceMax}
+                onChange={(e) => setPriceMax(e.target.value)}
+              />
+            </div>
+          </SearchField>
+          <SearchField label="Category">
+            <div className="relative">
+              <select
+                className="pill-select pr-8"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="">Category</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-500"
+              />
+            </div>
+          </SearchField>
+          <SearchField label="Member ID">
             <input
               className="pill-input"
-              placeholder="Max"
-              value={priceMax}
-              onChange={(e) => setPriceMax(e.target.value)}
+              placeholder="m124324"
+              value={memberId}
+              onChange={(e) => setMemberId(e.target.value)}
             />
-          </div>
-        </SearchField>
-        <SearchField label="Category">
-          <div className="relative">
-            <select
-              className="pill-select pr-8"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="">Category</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={14}
-              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-500"
-            />
-          </div>
-        </SearchField>
-        <SearchField label="Member ID">
-          <input
-            className="pill-input"
-            placeholder="m124324"
-            value={memberId}
-            onChange={(e) => setMemberId(e.target.value)}
-          />
-        </SearchField>
-      </SearchCard>
+          </SearchField>
+        </SearchCard>
+      </form>
 
       <table className="data-table">
         <thead>
@@ -114,9 +143,13 @@ export function ListingsClient({ data }: { data: Paged<AdminPost> }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((p) => (
-            <tr key={p.id}>
-              <td>
+          {data.items.map((p) => (
+            <tr
+              key={p.id}
+              className="cursor-pointer"
+              onClick={() => router.push(`/listings/${p.id}`)}
+            >
+              <td onClick={(e) => e.stopPropagation()}>
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-ink-300"
@@ -126,7 +159,7 @@ export function ListingsClient({ data }: { data: Paged<AdminPost> }) {
               </td>
               <td>
                 <div className="h-10 w-10 rounded-md bg-ink-100 overflow-hidden relative">
-                  {p.photos[0] && (
+                  {isImageSrc(p.photos[0]) && (
                     <Image src={p.photos[0]} alt="" fill sizes="40px" className="object-cover" />
                   )}
                 </div>
@@ -142,11 +175,7 @@ export function ListingsClient({ data }: { data: Paged<AdminPost> }) {
                 </div>
               </td>
               <td className="text-ink-700">m{p.seller.id}</td>
-              <td className="font-medium">
-                <Link href={`/listings/${p.id}`} className="hover:underline">
-                  {p.title}
-                </Link>
-              </td>
+              <td className="font-medium">{p.title}</td>
               <td className="text-ink-700 max-w-xs truncate">
                 {p.description ?? '—'}
               </td>
@@ -157,7 +186,7 @@ export function ListingsClient({ data }: { data: Paged<AdminPost> }) {
               </td>
             </tr>
           ))}
-          {rows.length === 0 && (
+          {data.items.length === 0 && (
             <tr>
               <td colSpan={9} className="text-center text-ink-500 py-10">
                 No listings match your filters.
@@ -168,9 +197,9 @@ export function ListingsClient({ data }: { data: Paged<AdminPost> }) {
       </table>
 
       <Pagination
-        page={page}
+        page={data.page}
         totalPages={Math.max(1, Math.ceil(data.total / data.pageSize))}
-        onChange={setPage}
+        onChange={(p) => pushFilters({ page: p })}
       />
     </div>
   );
