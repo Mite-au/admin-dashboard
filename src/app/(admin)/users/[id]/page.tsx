@@ -1,6 +1,6 @@
 import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
-import { getUser, getUserPosts } from '@/lib/fetchers';
+import { getUser, getUserConversations, getUserPosts, getUserThreads } from '@/lib/fetchers';
 import { UserDetailClient } from './UserDetailClient';
 
 export default async function UserDetailPage({
@@ -9,7 +9,12 @@ export default async function UserDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [user, sold] = await Promise.all([getUser(id), getUserPosts(id)]);
+  const [user, sold, threads, conversations] = await Promise.all([
+    getUser(id),
+    getUserPosts(id),
+    getUserThreads(id),
+    getUserConversations(id),
+  ]);
 
   return (
     <>
@@ -20,7 +25,12 @@ export default async function UserDetailPage({
         ]}
       />
       <PageHeader title="User detail" />
-      <UserDetailClient user={user} sold={sold} />
+      <UserDetailClient
+        user={user}
+        sold={sold}
+        threads={threads}
+        conversations={conversations}
+      />
     </>
   );
 }

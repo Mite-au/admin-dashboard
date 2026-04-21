@@ -84,6 +84,38 @@ export interface AdminThreadDetail extends AdminThreadListItem {
   lastActiveAt?: string | null;
 }
 
+export interface AdminUserThread {
+  id: string;
+  name: string;
+  type: ThreadType;
+  memberCount: number;
+  lastActiveAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminUserConversationPartner {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+export interface AdminUserConversationPost {
+  id: string;
+  title: string;
+  thumbnailUrl: string | null;
+  priceCents: number | null;
+  isPriceNegotiable: boolean;
+  status: string;
+}
+
+export interface AdminUserConversation {
+  id: string;
+  partner: AdminUserConversationPartner;
+  lastMessageSnippet: string | null;
+  lastMessageAt: string | null;
+  post?: AdminUserConversationPost | null;
+}
+
 export interface Paged<T> {
   items: T[];
   total: number;

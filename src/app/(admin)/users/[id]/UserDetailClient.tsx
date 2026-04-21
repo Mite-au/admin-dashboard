@@ -1,15 +1,16 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, Download, RotateCcw, Trash2, MoreVertical } from 'lucide-react';
 import { DetailTabs } from '@/components/DetailTabs';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Pagination } from '@/components/Pagination';
-import { formatCountry, formatDate, formatMoney, isImageSrc } from '@/lib/format';
+import { formatCountry, formatDate, formatMoney, formatNumber, isImageSrc } from '@/lib/format';
 import { updateUserStatus, updateSuburbVerification } from '@/lib/actions';
-import type { AdminPost, AdminUser, Paged } from '@/lib/types';
+import type { AdminPost, AdminUser, AdminUserConversation, AdminUserThread, Paged } from '@/lib/types';
 
 type TabKey = 'sold' | 'purchased' | 'thread' | 'chat' | 'reports' | 'logs';
 const MUTABLE_USER_STATUSES = ['active', 'suspended', 'pending_profile'] as const;
@@ -23,11 +24,16 @@ function isMutableUserStatus(value: string): value is MutableUserStatus {
 export function UserDetailClient({
   user,
   sold,
+  threads,
+  conversations,
 }: {
   user: AdminUser;
   sold: Paged<AdminPost>;
+  threads: AdminUserThread[];
+  conversations: AdminUserConversation[];
 }) {
   const [tab, setTab] = useState<TabKey>('sold');
+  const showItemActions = tab === 'sold';
 
   return (
     <div className="px-8 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -148,41 +154,39 @@ export function UserDetailClient({
           tabs={[
             { key: 'sold', label: 'Items sold', count: sold.total },
             { key: 'purchased', label: 'Items Purchased' },
-            { key: 'thread', label: 'Thread' },
-            { key: 'chat', label: 'Chat' },
+            { key: 'thread', label: 'Thread', count: threads.length },
+            { key: 'chat', label: 'Chat', count: conversations.length },
             { key: 'reports', label: 'Reports' },
             { key: 'logs', label: 'Logs' },
           ]}
         />
 
-        <div className="flex items-center gap-3 pt-5">
-          <input
-            className="pill-input max-w-sm"
-            placeholder="Keywords"
-          />
-          <button className="btn btn-pill-dark px-6">search</button>
+        {showItemActions && (
+          <div className="flex items-center gap-3 pt-5">
+            <input
+              className="pill-input max-w-sm"
+              placeholder="Keywords"
+            />
+            <button className="btn btn-pill-dark px-6">search</button>
 
-          <div className="ml-auto flex items-center gap-2">
-            <button className="btn-icon">
-              <Trash2 size={14} /> Delete
-            </button>
-            <button className="btn-icon">
-              <Download size={14} /> Export CSV
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <button className="btn-icon">
+                <Trash2 size={14} /> Delete
+              </button>
+              <button className="btn-icon">
+                <Download size={14} /> Export CSV
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="pt-5 flex-1">
           {tab === 'sold' && <ItemsTable posts={sold.items} kind="sold" />}
           {tab === 'purchased' && (
             <EmptyTab label="Items purchased — waiting on `transactions` table (see BACKEND_GAPS.md §3)" />
           )}
-          {tab === 'thread' && (
-            <EmptyTab label="Thread activity — waiting on `GET /admin/users/:id/threads`" />
-          )}
-          {tab === 'chat' && (
-            <EmptyTab label="Chat history — waiting on `GET /admin/users/:id/conversations`" />
-          )}
+          {tab === 'thread' && <ThreadsTab threads={threads} />}
+          {tab === 'chat' && <ConversationsTab conversations={conversations} />}
           {tab === 'reports' && (
             <EmptyTab label="Reports — waiting on Trust & Safety backend work" />
           )}
@@ -191,7 +195,9 @@ export function UserDetailClient({
           )}
         </div>
 
-        <Pagination page={1} totalPages={Math.max(1, Math.ceil(sold.total / sold.pageSize))} />
+        {tab === 'sold' && (
+          <Pagination page={1} totalPages={Math.max(1, Math.ceil(sold.total / sold.pageSize))} />
+        )}
       </section>
     </div>
   );
@@ -406,6 +412,87 @@ function ItemsTable({ posts, kind }: { posts: AdminPost[]; kind: 'sold' | 'purch
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function ThreadsTab({ threads }: { threads: AdminUserThread[] }) {
+  if (threads.length === 0) {
+    return <EmptyListState label="No threads" />;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-ink-200">
+      <div className="divide-y divide-ink-100">
+        {threads.map((thread) => (
+          <Link
+            key={thread.id}
+            href={`/threads/${thread.id}`}
+            className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-ink-50"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-ink-900">{thread.name}</p>
+                <p className="mt-1 text-xs text-ink-500">Thread ID {thread.id}</p>
+              </div>
+              <span className="rounded-full bg-ink-100 px-2.5 py-1 text-[11px] font-medium capitalize text-ink-700">
+                {thread.type}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-3">
+              <span>Members {formatNumber(thread.memberCount)}</span>
+              <span>Last active {thread.lastActiveAt ? formatDate(thread.lastActiveAt) : '—'}</span>
+              <span>Created {formatDate(thread.createdAt)}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ConversationsTab({ conversations }: { conversations: AdminUserConversation[] }) {
+  if (conversations.length === 0) {
+    return <EmptyListState label="No conversations" />;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-ink-200">
+      <div className="divide-y divide-ink-100">
+        {conversations.map((conversation) => (
+          <div key={conversation.id} className="px-5 py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-ink-900">
+                  {conversation.partner.displayName || `m${conversation.partner.id}`}
+                </p>
+                <p className="mt-1 text-xs text-ink-500">Conversation ID {conversation.id}</p>
+              </div>
+              <span className="text-xs text-ink-500">
+                {conversation.lastMessageAt ? formatDate(conversation.lastMessageAt) : '—'}
+              </span>
+            </div>
+            <p className="mt-3 text-sm text-ink-700">
+              {conversation.lastMessageSnippet || 'No messages yet.'}
+            </p>
+            {conversation.post && (
+              <div className="mt-3 rounded-lg bg-ink-50 px-3 py-2 text-sm text-ink-700">
+                <span className="font-medium text-ink-900">{conversation.post.title}</span>
+                <span className="ml-2 text-xs text-ink-500">Post ID {conversation.post.id}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptyListState({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-48 rounded-xl border border-dashed border-ink-200 text-ink-500 text-sm">
+      <MoreVertical size={20} className="mb-2 opacity-40" />
+      {label}
     </div>
   );
 }
