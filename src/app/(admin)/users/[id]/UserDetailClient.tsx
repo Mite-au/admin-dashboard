@@ -8,9 +8,17 @@ import { DetailTabs } from '@/components/DetailTabs';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Pagination } from '@/components/Pagination';
 import { formatCountry, formatDate, formatMoney, isImageSrc } from '@/lib/format';
+import { updateUserStatus, updateSuburbVerification } from '@/lib/actions';
 import type { AdminPost, AdminUser, Paged } from '@/lib/types';
 
 type TabKey = 'sold' | 'purchased' | 'thread' | 'chat' | 'reports' | 'logs';
+const MUTABLE_USER_STATUSES = ['active', 'suspended', 'pending_profile'] as const;
+const MUTABLE_USER_STATUS_SET = new Set<string>(MUTABLE_USER_STATUSES);
+type MutableUserStatus = (typeof MUTABLE_USER_STATUSES)[number];
+
+function isMutableUserStatus(value: string): value is MutableUserStatus {
+  return MUTABLE_USER_STATUS_SET.has(value);
+}
 
 export function UserDetailClient({
   user,
@@ -47,19 +55,28 @@ export function UserDetailClient({
           </div>
           <div>
             <div className="text-lg font-bold">m{user.id}</div>
-            <StatusDropdown value={user.status} />
+            <StatusDropdown userId={user.id} value={user.status} />
           </div>
         </div>
 
         <div className="rounded-xl border border-ink-200 p-4 flex items-center gap-4">
-          <button className="inline-flex items-center gap-1.5 text-sm text-ink-700 hover:text-ink-900">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 text-sm text-ink-700 hover:text-ink-900"
+          >
             <RotateCcw size={14} />
             Reset
           </button>
-          <button className="rounded-full border border-ink-200 px-4 py-1.5 text-sm text-ink-700 hover:bg-ink-50">
+          <button
+            type="button"
+            className="rounded-full border border-ink-200 px-4 py-1.5 text-sm text-ink-700 hover:bg-ink-50"
+          >
             Password
           </button>
-          <button className="rounded-full border border-ink-200 px-4 py-1.5 text-sm text-ink-700 hover:bg-ink-50">
+          <button
+            type="button"
+            className="rounded-full border border-ink-200 px-4 py-1.5 text-sm text-ink-700 hover:bg-ink-50"
+          >
             Profile image
           </button>
         </div>
@@ -90,17 +107,12 @@ export function UserDetailClient({
           />
 
           <InfoField label="Nationality" value={formatCountry(user.nationality)} />
-          <InfoField
-            label="Suburb"
-            value={user.suburb ?? '—'}
-            badge={
-              user.suburb
-                ? user.suburbVerified
-                  ? { label: 'Verified', tone: 'success' }
-                  : { label: 'Verification required', tone: 'danger' }
-                : undefined
-            }
-            spanCols={2}
+
+          {/* Suburb — interactive verify/unverify */}
+          <SuburbField
+            userId={user.id}
+            suburb={user.suburb}
+            suburbVerified={user.suburbVerified}
           />
 
           <InfoField
@@ -187,13 +199,121 @@ export function UserDetailClient({
 
 // ── Subcomponents ──────────────────────────────────────────────────────
 
-function StatusDropdown({ value }: { value: string }) {
+/**
+ * Status dropdown — Activate / Suspend.
+ * Ban is excluded (handled via penalty endpoint, separate PR).
+ * Deleted / banned statuses are shown read-only.
+ */
+function StatusDropdown({ userId, value }: { userId: string; value: string }) {
+  const router = useRouter();
+  const [isPending, setIsPending] = useState(false);
+
+  const isReadOnly = value === 'banned' || value === 'deleted';
+
+  const handleChange = async (newStatus: string) => {
+    if (newStatus === value || isPending) return;
+    if (!isMutableUserStatus(newStatus)) {
+      alert('Invalid status');
+      return;
+    }
+    setIsPending(true);
+    try {
+      await updateUserStatus(userId, newStatus);
+      router.refresh();
+    } catch (err) {
+      alert(`Status update failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  if (isReadOnly) {
+    return (
+      <div className="mt-1 inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-4 py-1.5 text-sm opacity-60 cursor-not-allowed capitalize">
+        {value.replace('_', ' ')}
+      </div>
+    );
+  }
+
   return (
-    <div className="mt-1 inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-4 py-1.5 text-sm">
-      <span className="capitalize">
-        {value === 'active' ? 'Activate user' : value.replace('_', ' ')}
-      </span>
-      <ChevronDown size={14} className="text-ink-500" />
+    <div className="mt-1 relative inline-flex items-center">
+      <select
+        className="inline-flex items-center rounded-full border border-ink-200 bg-white pl-4 pr-8 py-1.5 text-sm appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        value={value}
+        disabled={isPending}
+        onChange={(e) => handleChange(e.target.value)}
+      >
+        <option value="active">Activate user</option>
+        <option value="suspended">Suspend</option>
+        {value === 'pending_profile' && (
+          <option value="pending_profile">Pending profile</option>
+        )}
+      </select>
+      <ChevronDown
+        size={14}
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-500"
+      />
+      {isPending && (
+        <span className="ml-2 text-[11px] text-ink-500">Saving…</span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Suburb field with inline Verify / Unverify button.
+ */
+function SuburbField({
+  userId,
+  suburb,
+  suburbVerified,
+}: {
+  userId: string;
+  suburb?: string | null;
+  suburbVerified?: boolean | null;
+}) {
+  const router = useRouter();
+  const [isPending, setIsPending] = useState(false);
+
+  const handleVerify = async (verified: boolean) => {
+    if (isPending) return;
+    setIsPending(true);
+    try {
+      await updateSuburbVerification(userId, verified);
+      router.refresh();
+    } catch (err) {
+      alert(`Verification update failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <div className="col-span-2">
+      <dt className="text-xs text-ink-500 mb-1">Suburb</dt>
+      <dd className="text-sm text-ink-900 break-words">{suburb ?? '—'}</dd>
+      {suburb && (
+        <div className="mt-1 flex items-center gap-2 flex-wrap">
+          <span
+            className={
+              'inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ' +
+              (suburbVerified
+                ? 'bg-green-50 text-success'
+                : 'bg-pink-50 text-danger')
+            }
+          >
+            {suburbVerified ? 'Verified' : 'Verification required'}
+          </span>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => handleVerify(!suburbVerified)}
+            className="text-[11px] font-medium text-brand-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isPending ? 'Saving…' : suburbVerified ? 'Unverify' : 'Verify'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -298,4 +418,3 @@ function EmptyTab({ label }: { label: string }) {
     </div>
   );
 }
-
