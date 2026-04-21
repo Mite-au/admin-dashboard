@@ -5,9 +5,20 @@ import { usePathname, useRouter } from 'next/navigation';
 import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
+import { exportToCsv } from '@/components/ExportCsvButton';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { TransactionFilters } from '@/lib/fetchers';
 import type { AdminTransaction, Paged } from '@/lib/types';
+
+const CSV_COLUMNS = [
+  { key: 'transactionId', label: 'Transaction ID' },
+  { key: 'item',          label: 'Item' },
+  { key: 'buyer',         label: 'Buyer' },
+  { key: 'seller',        label: 'Seller' },
+  { key: 'amount',        label: 'Amount' },
+  { key: 'status',        label: 'Status' },
+  { key: 'date',          label: 'Date' },
+] as const;
 
 export function TransactionsClient({
   data,
@@ -20,9 +31,9 @@ export function TransactionsClient({
   const pathname = usePathname();
   const [, startTransition] = useTransition();
 
-  const [postTitle, setPostTitle] = useState(filters.postTitle ?? '');
-  const [buyer, setBuyer] = useState(filters.buyer ?? '');
-  const [seller, setSeller] = useState(filters.seller ?? '');
+  const [postTitle, setPostTitle]         = useState(filters.postTitle ?? '');
+  const [buyer, setBuyer]                 = useState(filters.buyer ?? '');
+  const [seller, setSeller]               = useState(filters.seller ?? '');
   const [transactionId, setTransactionId] = useState(filters.transactionId ?? '');
 
   const pushFilters = (next: Partial<Record<string, string | number | undefined>>) => {
@@ -48,10 +59,29 @@ export function TransactionsClient({
     pushFilters({ page: 1 });
   };
 
+  const handleExport = () => {
+    const rows = data.items.map((t) => ({
+      transactionId: `t${t.id}`,
+      item:          t.postTitle,
+      buyer:         t.buyer,
+      seller:        t.seller,
+      amount:        `${t.amount} ${t.currency}`,
+      status:        t.status,
+      date:          formatDate(t.createdAt),
+    }));
+    const filename = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+    exportToCsv(rows, [...CSV_COLUMNS], filename);
+  };
+
   return (
     <div className="px-8 pb-8 space-y-6">
       <form onSubmit={onSearch}>
-        <SearchCard title="Transaction Search" total={data.total} label="transactions">
+        <SearchCard
+          title="Transaction Search"
+          total={data.total}
+          label="transactions"
+          onExport={handleExport}
+        >
           <SearchField label="Item title">
             <input
               className="pill-input"

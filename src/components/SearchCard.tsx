@@ -32,6 +32,7 @@ export function SearchCard({
           Total <span className="text-brand-600 font-semibold">{total}</span> {label}
         </span>
         <button
+          type="button"
           onClick={onExport}
           className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-ink-50 border border-ink-200 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-100"
         >

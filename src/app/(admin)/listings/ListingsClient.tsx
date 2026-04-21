@@ -7,9 +7,20 @@ import { ChevronDown } from 'lucide-react';
 import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
+import { exportToCsv } from '@/components/ExportCsvButton';
 import { formatDate, formatMoney, isImageSrc } from '@/lib/format';
 import type { PostFilters } from '@/lib/fetchers';
 import type { AdminPost, Paged } from '@/lib/types';
+
+const CSV_COLUMNS = [
+  { key: 'itemId',    label: 'Item ID' },
+  { key: 'title',     label: 'Item title' },
+  { key: 'category',  label: 'Category' },
+  { key: 'price',     label: 'Price' },
+  { key: 'condition', label: 'Condition' },
+  { key: 'status',    label: 'Status' },
+  { key: 'date',      label: 'Date' },
+] as const;
 
 export function ListingsClient({
   data,
@@ -22,7 +33,7 @@ export function ListingsClient({
   const pathname = usePathname();
   const [, startTransition] = useTransition();
 
-  const [title, setTitle] = useState(filters.title ?? '');
+  const [title, setTitle]       = useState(filters.title ?? '');
   const [priceMin, setPriceMin] = useState(
     filters.priceMin !== undefined ? String(filters.priceMin) : '',
   );
@@ -68,10 +79,29 @@ export function ListingsClient({
     });
   };
 
+  const handleExport = () => {
+    const rows = data.items.map((p) => ({
+      itemId:    `i${p.id}`,
+      title:     p.title,
+      category:  p.category,
+      price:     `${p.price} ${p.currency}`,
+      condition: p.condition,
+      status:    p.status,
+      date:      formatDate(p.createdAt),
+    }));
+    const filename = `listings-${new Date().toISOString().slice(0, 10)}.csv`;
+    exportToCsv(rows, [...CSV_COLUMNS], filename);
+  };
+
   return (
     <div className="px-8 pb-8 space-y-6">
       <form onSubmit={onSearch}>
-        <SearchCard title="Listing Search" total={data.total} label="listings">
+        <SearchCard
+          title="Listing Search"
+          total={data.total}
+          label="listings"
+          onExport={handleExport}
+        >
           <SearchField label="Item title">
             <input
               className="pill-input"

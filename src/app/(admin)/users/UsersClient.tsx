@@ -2,11 +2,29 @@
 
 import { useState, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
+import { exportToCsv } from '@/components/ExportCsvButton';
 import type { UserFilters } from '@/lib/fetchers';
 import type { AdminUser, Paged } from '@/lib/types';
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'suspended', label: 'Suspended' },
+  { value: 'banned', label: 'Banned' },
+] as const;
+
+const CSV_COLUMNS = [
+  { key: 'name',        label: 'User Name' },
+  { key: 'email',       label: 'Email' },
+  { key: 'phone',       label: 'Phone' },
+  { key: 'userId',      label: 'User ID' },
+  { key: 'nationality', label: 'Nationality' },
+  { key: 'status',      label: 'Status' },
+] as const;
 
 export function UsersClient({
   data,
@@ -19,10 +37,11 @@ export function UsersClient({
   const pathname = usePathname();
   const [, startTransition] = useTransition();
 
-  const [name, setName] = useState(filters.name ?? '');
-  const [email, setEmail] = useState(filters.email ?? '');
-  const [phone, setPhone] = useState(filters.phone ?? '');
+  const [name, setName]         = useState(filters.name ?? '');
+  const [email, setEmail]       = useState(filters.email ?? '');
+  const [phone, setPhone]       = useState(filters.phone ?? '');
   const [memberId, setMemberId] = useState(filters.memberId ?? '');
+  const [status, setStatus]     = useState(filters.status ?? '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const pushFilters = (next: Partial<UserFilters>) => {
@@ -32,6 +51,7 @@ export function UsersClient({
       email,
       phone,
       memberId,
+      status,
       page: filters.page,
       ...next,
     };
@@ -57,10 +77,28 @@ export function UsersClient({
     });
   };
 
+  const handleExport = () => {
+    const rows = data.items.map((u) => ({
+      name:        u.name,
+      email:       u.email ?? '',
+      phone:       u.phone ?? '',
+      userId:      `m${u.id}`,
+      nationality: u.nationality ?? '',
+      status:      u.status,
+    }));
+    const filename = `users-${new Date().toISOString().slice(0, 10)}.csv`;
+    exportToCsv(rows, [...CSV_COLUMNS], filename);
+  };
+
   return (
     <div className="px-8 pb-8 space-y-6">
       <form onSubmit={onSearch}>
-        <SearchCard title="User Search" total={data.total} label="users">
+        <SearchCard
+          title="User Search"
+          total={data.total}
+          label="users"
+          onExport={handleExport}
+        >
           <SearchField label="Name">
             <input
               className="pill-input"
@@ -92,6 +130,28 @@ export function UsersClient({
               value={memberId}
               onChange={(e) => setMemberId(e.target.value)}
             />
+          </SearchField>
+          <SearchField label="Status">
+            <div className="relative">
+              <select
+                className="pill-select pr-8"
+                value={status}
+                onChange={(e) => {
+                  setStatus(e.target.value);
+                  pushFilters({ status: e.target.value, page: 1 });
+                }}
+              >
+                {STATUS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-500"
+              />
+            </div>
           </SearchField>
         </SearchCard>
       </form>

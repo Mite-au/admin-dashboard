@@ -18,6 +18,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
     email: first(sp.email),
     phone: first(sp.phone),
     memberId: first(sp.memberId),
+    status: first(sp.status),
   };
   const data = await getUsers(filters);
 
