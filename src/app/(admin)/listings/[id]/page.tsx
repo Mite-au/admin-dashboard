@@ -1,6 +1,6 @@
 import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
-import { getPost } from '@/lib/fetchers';
+import { getPost, getUser } from '@/lib/fetchers';
 import { ListingDetailClient } from './ListingDetailClient';
 
 export default async function ListingDetailPage({
@@ -10,6 +10,7 @@ export default async function ListingDetailPage({
 }) {
   const { id } = await params;
   const post = await getPost(id);
+  const seller = await getUser(post.seller.id);
 
   return (
     <>
@@ -20,7 +21,7 @@ export default async function ListingDetailPage({
         ]}
       />
       <PageHeader title="List detail" />
-      <ListingDetailClient post={post} />
+      <ListingDetailClient post={post} seller={seller} />
     </>
   );
 }

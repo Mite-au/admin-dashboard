@@ -7,8 +7,10 @@
  */
 
 import { api } from './api';
+import type { PostStatus } from './types';
 
 type MutableUserStatus = 'active' | 'suspended' | 'pending_profile';
+type MutablePostStatus = PostStatus;
 
 export async function updateUserStatus(
   id: string,
@@ -31,4 +33,14 @@ export async function updateSuburbVerification(
       body: JSON.stringify({ verified }),
     },
   );
+}
+
+export async function updatePostStatus(
+  id: string,
+  status: MutablePostStatus,
+): Promise<{ id: string; status: PostStatus }> {
+  return api<{ id: string; status: PostStatus }>(`/admin/posts/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
 }
