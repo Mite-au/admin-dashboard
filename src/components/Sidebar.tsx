@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import {
+  LayoutDashboard,
   User,
   List,
   HandCoins,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 
 const nav = [
+  { href: '/overview', label: 'Overview', icon: LayoutDashboard },
   { href: '/users', label: 'User', icon: User },
   { href: '/listings', label: 'Listing', icon: List },
   { href: '/transactions', label: 'Transactions', icon: HandCoins },
