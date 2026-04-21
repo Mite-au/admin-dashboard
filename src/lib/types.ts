@@ -1,5 +1,7 @@
 // Mirror the Prisma schema for types used across the dashboard.
 export type PostStatus = 'draft' | 'published' | 'sold' | 'paused' | 'archived' | 'deleted';
+export type ThreadAdminStatus = 'active' | 'flagged' | 'archived' | 'hidden';
+export type ThreadType = 'suburb' | 'interest';
 /**
  * Real DB enum values from `users.status`, plus the synthetic `'banned'`
  * which the backend returns when `user_penalties.active = true`.
@@ -65,15 +67,21 @@ export interface AdminTransaction {
   cancelledAt?: string | null;
 }
 
-export interface AdminThread {
+export interface AdminThreadListItem {
   id: string;
   name: string;
-  type: 'suburb' | 'interest';
+  type: ThreadType;
   memberCount: number;
   messageCount: number;
   createdAt: string;
   /** Admin status, backed by `threads.admin_status`. */
-  status: 'active' | 'flagged' | 'archived' | 'hidden';
+  status: ThreadAdminStatus;
+}
+
+export interface AdminThreadDetail extends AdminThreadListItem {
+  description?: string | null;
+  slug?: string | null;
+  lastActiveAt?: string | null;
 }
 
 export interface Paged<T> {

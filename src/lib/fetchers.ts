@@ -1,7 +1,8 @@
 import { api } from './api';
 import type {
   AdminPost,
-  AdminThread,
+  AdminThreadDetail,
+  AdminThreadListItem,
   AdminTransaction,
   AdminUser,
   OverviewStats,
@@ -82,4 +83,6 @@ export const getTransactions = (filters: TransactionFilters = {}) =>
   api<Paged<AdminTransaction>>(`/admin/transactions${qs({ pageSize: 15, ...filters })}`);
 
 export const getThreads = (filters: ThreadFilters = {}) =>
-  api<Paged<AdminThread>>(`/admin/threads${qs({ pageSize: 15, ...filters })}`);
+  api<Paged<AdminThreadListItem>>(`/admin/threads${qs({ pageSize: 15, ...filters })}`);
+
+export const getThread = (id: string) => api<AdminThreadDetail>(`/admin/threads/${id}`);

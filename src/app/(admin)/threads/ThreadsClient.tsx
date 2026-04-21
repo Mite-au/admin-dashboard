@@ -6,14 +6,14 @@ import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatDate, formatNumber } from '@/lib/format';
-import type { AdminThread, Paged } from '@/lib/types';
+import type { AdminThreadListItem, Paged } from '@/lib/types';
 import type { ThreadFilters } from '@/lib/fetchers';
 
 export function ThreadsClient({
   data,
   filters,
 }: {
-  data: Paged<AdminThread>;
+  data: Paged<AdminThreadListItem>;
   filters: ThreadFilters;
 }) {
   const router = useRouter();
@@ -109,8 +109,12 @@ export function ThreadsClient({
         </thead>
         <tbody>
           {rows.map((t) => (
-            <tr key={t.id}>
-              <td>
+            <tr
+              key={t.id}
+              className="cursor-pointer"
+              onClick={() => router.push(`/threads/${t.id}`)}
+            >
+              <td onClick={(e) => e.stopPropagation()}>
                 <input type="checkbox" className="h-4 w-4 rounded border-ink-300" />
               </td>
               <td className="font-medium">{t.name}</td>

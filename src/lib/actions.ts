@@ -7,10 +7,11 @@
  */
 
 import { api } from './api';
-import type { PostStatus } from './types';
+import type { PostStatus, ThreadAdminStatus } from './types';
 
 type MutableUserStatus = 'active' | 'suspended' | 'pending_profile';
 type MutablePostStatus = PostStatus;
+type MutableThreadStatus = ThreadAdminStatus;
 
 export async function updateUserStatus(
   id: string,
@@ -40,6 +41,16 @@ export async function updatePostStatus(
   status: MutablePostStatus,
 ): Promise<{ id: string; status: PostStatus }> {
   return api<{ id: string; status: PostStatus }>(`/admin/posts/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function updateThreadStatus(
+  id: string,
+  status: MutableThreadStatus,
+): Promise<{ id: string; status: ThreadAdminStatus }> {
+  return api<{ id: string; status: ThreadAdminStatus }>(`/admin/threads/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
