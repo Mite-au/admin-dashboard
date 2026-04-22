@@ -10,7 +10,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Pagination } from '@/components/Pagination';
 import { formatCountry, formatDate, formatMoney, formatNumber, isImageSrc } from '@/lib/format';
 import { updateUserStatus, updateSuburbVerification } from '@/lib/actions';
-import type { AdminPost, AdminUser, AdminUserConversation, AdminUserThread, Paged } from '@/lib/types';
+import type { AdminPost, AdminTransaction, AdminUser, AdminUserConversation, AdminUserThread, Paged } from '@/lib/types';
 
 type TabKey = 'sold' | 'purchased' | 'thread' | 'chat' | 'reports' | 'logs';
 const MUTABLE_USER_STATUSES = ['active', 'suspended', 'pending_profile'] as const;
@@ -26,11 +26,13 @@ export function UserDetailClient({
   sold,
   threads,
   conversations,
+  purchased,
 }: {
   user: AdminUser;
   sold: Paged<AdminPost>;
   threads: AdminUserThread[];
   conversations: AdminUserConversation[];
+  purchased: Paged<AdminTransaction>;
 }) {
   const [tab, setTab] = useState<TabKey>('sold');
   const showItemActions = tab === 'sold';
@@ -153,7 +155,7 @@ export function UserDetailClient({
           onChange={(k) => setTab(k as TabKey)}
           tabs={[
             { key: 'sold', label: 'Items sold', count: sold.total },
-            { key: 'purchased', label: 'Items Purchased' },
+            { key: 'purchased', label: 'Items Purchased', count: purchased.total },
             { key: 'thread', label: 'Thread', count: threads.length },
             { key: 'chat', label: 'Chat', count: conversations.length },
             { key: 'reports', label: 'Reports' },
@@ -182,9 +184,7 @@ export function UserDetailClient({
 
         <div className="pt-5 flex-1">
           {tab === 'sold' && <ItemsTable posts={sold.items} kind="sold" />}
-          {tab === 'purchased' && (
-            <EmptyTab label="Items purchased — waiting on `transactions` table (see BACKEND_GAPS.md §3)" />
-          )}
+          {tab === 'purchased' && <PurchasedTable transactions={purchased.items} />}
           {tab === 'thread' && <ThreadsTab threads={threads} />}
           {tab === 'chat' && <ConversationsTab conversations={conversations} />}
           {tab === 'reports' && (
@@ -197,6 +197,9 @@ export function UserDetailClient({
 
         {tab === 'sold' && (
           <Pagination page={1} totalPages={Math.max(1, Math.ceil(sold.total / sold.pageSize))} />
+        )}
+        {tab === 'purchased' && (
+          <Pagination page={1} totalPages={Math.max(1, Math.ceil(purchased.total / purchased.pageSize))} />
         )}
       </section>
     </div>
@@ -407,6 +410,68 @@ function ItemsTable({ posts, kind }: { posts: AdminPost[]; kind: 'sold' | 'purch
             <tr>
               <td colSpan={8} className="text-center text-ink-500 py-10">
                 No items yet.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const TRANSACTION_STATUS_MAP: Record<AdminTransaction['status'], string> = {
+  completed: 'complete',
+  pending: 'in progress',
+  cancelled: 'fail',
+  disputed: 'fail',
+  refunded: 'fail',
+};
+
+function PurchasedTable({ transactions }: { transactions: AdminTransaction[] }) {
+  const router = useRouter();
+  return (
+    <div>
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Seller</th>
+            <th>Item number</th>
+            <th>Item title</th>
+            <th className="text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {transactions.map((t) => (
+            <tr
+              key={t.id}
+              className="cursor-pointer"
+              onClick={() => router.push(`/listings/${t.postId}`)}
+            >
+              <td className="text-ink-700">
+                <div>{formatDate(t.createdAt)}</div>
+                <div className="text-xs text-ink-500">
+                  {new Date(t.createdAt).toLocaleTimeString('en-AU', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </div>
+              </td>
+              <td>
+                <StatusBadge status={TRANSACTION_STATUS_MAP[t.status]} />
+              </td>
+              <td className="text-ink-700">{t.seller}</td>
+              <td className="text-ink-700">i{t.postId}</td>
+              <td className="text-ink-900 font-medium">{t.postTitle}</td>
+              <td className="text-right">{formatMoney(t.amount, t.currency)}</td>
+            </tr>
+          ))}
+          {transactions.length === 0 && (
+            <tr>
+              <td colSpan={6} className="text-center text-ink-500 py-10">
+                No purchases yet.
               </td>
             </tr>
           )}

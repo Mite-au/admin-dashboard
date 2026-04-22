@@ -1,6 +1,6 @@
 import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
-import { getUser, getUserConversations, getUserPosts, getUserThreads } from '@/lib/fetchers';
+import { getUser, getUserConversations, getUserPosts, getUserPurchases, getUserThreads } from '@/lib/fetchers';
 import { UserDetailClient } from './UserDetailClient';
 
 export default async function UserDetailPage({
@@ -9,11 +9,12 @@ export default async function UserDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [user, sold, threads, conversations] = await Promise.all([
+  const [user, sold, threads, conversations, purchased] = await Promise.all([
     getUser(id),
     getUserPosts(id),
     getUserThreads(id),
     getUserConversations(id),
+    getUserPurchases(id),
   ]);
 
   return (
@@ -30,6 +31,7 @@ export default async function UserDetailPage({
         sold={sold}
         threads={threads}
         conversations={conversations}
+        purchased={purchased}
       />
     </>
   );
