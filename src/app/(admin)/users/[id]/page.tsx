@@ -1,10 +1,7 @@
 import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
 import { getUser, getUserConversations, getUserPosts, getUserPurchases, getUserReports, getUserThreads } from '@/lib/fetchers';
-import type { AdminReport, AdminTransaction, Paged } from '@/lib/types';
 import { UserDetailClient } from './UserDetailClient';
-
-const EMPTY_PAGED: Paged<AdminTransaction> = { items: [], total: 0, page: 1, pageSize: 15 };
 
 export default async function UserDetailPage({
   params,
@@ -17,8 +14,8 @@ export default async function UserDetailPage({
     getUserPosts(id),
     getUserThreads(id),
     getUserConversations(id),
-    getUserPurchases(id).catch((): Paged<AdminTransaction> => EMPTY_PAGED),
-    getUserReports(id).catch((): AdminReport[] => []),
+    getUserPurchases(id),
+    getUserReports(id),
   ]);
 
   return (
