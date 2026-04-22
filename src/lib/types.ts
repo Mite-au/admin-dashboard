@@ -123,6 +123,19 @@ export interface Paged<T> {
   pageSize: number;
 }
 
+export interface AdminReport {
+  id: string;
+  targetType: 'post' | 'user';
+  targetId: string;
+  targetTitle: string | null;
+  reporterId: string;
+  reporterName: string;
+  reason: string;
+  details: string | null;
+  status: 'open' | 'resolved';
+  createdAt: string;
+}
+
 export interface OverviewStats {
   activityByDay: { date: string; posts: number; sales: number }[];
   totals: {

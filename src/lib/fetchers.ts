@@ -1,6 +1,7 @@
 import { api } from './api';
 import type {
   AdminPost,
+  AdminReport,
   AdminThreadDetail,
   AdminThreadListItem,
   AdminTransaction,
@@ -57,6 +58,13 @@ export type TransactionFilters = {
   transactionId?: string;
 };
 
+export type ReportFilters = {
+  page?: number;
+  pageSize?: number;
+  status?: string;
+  targetType?: string;
+};
+
 export type ThreadFilters = {
   page?: number;
   pageSize?: number;
@@ -97,3 +105,8 @@ export const getThreads = (filters: ThreadFilters = {}) =>
   api<Paged<AdminThreadListItem>>(`/admin/threads${qs({ pageSize: 15, ...filters })}`);
 
 export const getThread = (id: string) => api<AdminThreadDetail>(`/admin/threads/${id}`);
+
+export const getReports = (filters: ReportFilters = {}) =>
+  api<Paged<AdminReport>>(`/admin/reports${qs({ pageSize: 15, ...filters })}`);
+
+export const getReport = (id: string) => api<AdminReport>(`/admin/reports/${id}`);

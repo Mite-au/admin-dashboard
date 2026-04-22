@@ -1,12 +1,29 @@
-import { StubPage } from '@/components/StubPage';
+import { Topbar } from '@/components/Topbar';
+import { PageHeader } from '@/components/PageHeader';
+import { getReports, type ReportFilters } from '@/lib/fetchers';
+import { TrustSafetyClient } from './TrustSafetyClient';
 
-export default function TrustSafetyPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function first(v: string | string[] | undefined): string | undefined {
+  if (Array.isArray(v)) return v[0];
+  return v;
+}
+
+export default async function TrustSafetyPage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+  const filters: ReportFilters = {
+    page: Number(first(sp.page) ?? 1),
+    status: first(sp.status),
+    targetType: first(sp.targetType),
+  };
+  const data = await getReports(filters);
+
   return (
-    <StubPage
-      breadcrumb="Trust & Safety"
-      href="/trust-safety"
-      title="Trust & Safety"
-      description="Moderation queue and user penalties — coming soon."
-    />
+    <>
+      <Topbar breadcrumbs={[{ label: 'Trust & Safety', href: '/trust-safety' }]} />
+      <PageHeader title="Trust & Safety" />
+      <TrustSafetyClient data={data} filters={filters} />
+    </>
   );
 }
