@@ -110,3 +110,8 @@ export const getReports = (filters: ReportFilters = {}) =>
   api<Paged<AdminReport>>(`/admin/reports${qs({ pageSize: 15, ...filters })}`);
 
 export const getReport = (id: string) => api<AdminReport>(`/admin/reports/${id}`);
+
+export const getUserReports = async (userId: string): Promise<AdminReport[]> => {
+  const data = await api<Paged<AdminReport>>(`/admin/reports?targetType=user&pageSize=100`);
+  return data.items.filter((r) => r.targetId === userId);
+};

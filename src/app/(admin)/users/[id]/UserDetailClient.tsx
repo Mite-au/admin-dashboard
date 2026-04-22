@@ -10,7 +10,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Pagination } from '@/components/Pagination';
 import { formatCountry, formatDate, formatMoney, formatNumber, isImageSrc } from '@/lib/format';
 import { updateUserStatus, updateSuburbVerification } from '@/lib/actions';
-import type { AdminPost, AdminTransaction, AdminUser, AdminUserConversation, AdminUserThread, Paged } from '@/lib/types';
+import type { AdminPost, AdminReport, AdminTransaction, AdminUser, AdminUserConversation, AdminUserThread, Paged } from '@/lib/types';
 
 type TabKey = 'sold' | 'purchased' | 'thread' | 'chat' | 'reports' | 'logs';
 const MUTABLE_USER_STATUSES = ['active', 'suspended', 'pending_profile'] as const;
@@ -27,12 +27,14 @@ export function UserDetailClient({
   threads,
   conversations,
   purchased,
+  reports,
 }: {
   user: AdminUser;
   sold: Paged<AdminPost>;
   threads: AdminUserThread[];
   conversations: AdminUserConversation[];
   purchased: Paged<AdminTransaction>;
+  reports: AdminReport[];
 }) {
   const [tab, setTab] = useState<TabKey>('sold');
   const showItemActions = tab === 'sold';
@@ -158,7 +160,7 @@ export function UserDetailClient({
             { key: 'purchased', label: 'Items Purchased', count: purchased.total },
             { key: 'thread', label: 'Thread', count: threads.length },
             { key: 'chat', label: 'Chat', count: conversations.length },
-            { key: 'reports', label: 'Reports' },
+            { key: 'reports', label: 'Reports', count: reports.length },
             { key: 'logs', label: 'Logs' },
           ]}
         />
@@ -187,9 +189,7 @@ export function UserDetailClient({
           {tab === 'purchased' && <PurchasedTable transactions={purchased.items} />}
           {tab === 'thread' && <ThreadsTab threads={threads} />}
           {tab === 'chat' && <ConversationsTab conversations={conversations} />}
-          {tab === 'reports' && (
-            <EmptyTab label="Reports — waiting on Trust & Safety backend work" />
-          )}
+          {tab === 'reports' && <ReportsTab reports={reports} />}
           {tab === 'logs' && (
             <EmptyTab label="Logs — waiting on `audit_events` table" />
           )}
@@ -475,6 +475,58 @@ function PurchasedTable({ transactions }: { transactions: AdminTransaction[] }) 
               </td>
             </tr>
           )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ReportsTab({ reports }: { reports: AdminReport[] }) {
+  const router = useRouter();
+
+  if (reports.length === 0) {
+    return <EmptyListState label="No reports yet." />;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-ink-200">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Reason</th>
+            <th>Details</th>
+            <th className="text-right pr-6">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {reports.map((r) => (
+            <tr
+              key={r.id}
+              className="cursor-pointer"
+              onClick={() => router.push(`/trust-safety/${r.id}`)}
+            >
+              <td className="text-ink-700">{formatDate(r.createdAt)}</td>
+              <td>
+                <span
+                  className={
+                    'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium ' +
+                    (r.targetType === 'post'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'bg-purple-50 text-purple-700')
+                  }
+                >
+                  {r.targetType === 'post' ? 'Post' : 'User'}
+                </span>
+              </td>
+              <td className="text-ink-700">{r.reason}</td>
+              <td className="text-ink-700">{r.details ?? '—'}</td>
+              <td className="text-right pr-6">
+                <StatusBadge status={r.status === 'open' ? 'in progress' : 'complete'} />
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
