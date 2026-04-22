@@ -93,9 +93,8 @@ export function ReportDetailClient({ report }: { report: AdminReport }) {
         </Link>
         <button
           type="button"
-          disabled
           onClick={() => alert('Resolve is not yet available.')}
-          className="block w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-center text-ink-400 bg-ink-50 cursor-not-allowed"
+          className="block w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-center text-ink-400 bg-ink-50 cursor-not-allowed opacity-50"
         >
           Resolve
         </button>

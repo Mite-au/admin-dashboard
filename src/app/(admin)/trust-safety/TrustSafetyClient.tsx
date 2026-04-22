@@ -58,6 +58,11 @@ export function TrustSafetyClient({
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname));
   };
 
+  const onSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    pushFilters({ page: 1 });
+  };
+
   const handleExport = () => {
     const rows = data.items.map((r) => ({
       reportId: r.id,
@@ -74,6 +79,7 @@ export function TrustSafetyClient({
 
   return (
     <div className="px-8 pb-8 space-y-6">
+      <form onSubmit={onSearch}>
       <SearchCard
         title="Report Search"
         total={data.total}
@@ -125,6 +131,7 @@ export function TrustSafetyClient({
           </div>
         </SearchField>
       </SearchCard>
+      </form>
 
       <table className="data-table">
         <thead>
