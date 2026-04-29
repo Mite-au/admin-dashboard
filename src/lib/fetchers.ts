@@ -114,7 +114,5 @@ export const getReports = (filters: ReportFilters = {}) =>
 
 export const getReport = (id: string) => api<AdminReport>(`/admin/reports/${id}`);
 
-export const getUserReports = async (userId: string): Promise<AdminReport[]> => {
-  const data = await api<Paged<AdminReport>>(`/admin/reports?targetType=user&pageSize=100`);
-  return data.items.filter((r) => r.targetId === userId);
-};
+export const getUserReports = (userId: string): Promise<AdminReport[]> =>
+  api<AdminReport[]>(`/admin/users/${userId}/reports`);

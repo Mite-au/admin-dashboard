@@ -191,7 +191,7 @@ export function UserDetailClient({
           {tab === 'chat' && <ConversationsTab conversations={conversations} />}
           {tab === 'reports' && <ReportsTab reports={reports} />}
           {tab === 'logs' && (
-            <EmptyTab label="Logs — waiting on `audit_events` table" />
+            <EmptyTab label="Logs are not available yet." />
           )}
         </div>
 
@@ -474,7 +474,7 @@ function ReportsTab({ reports }: { reports: AdminReport[] }) {
   const router = useRouter();
 
   if (reports.length === 0) {
-    return <EmptyListState label="No reports yet." />;
+    return <EmptyListState label="No reports." />;
   }
 
   return (
@@ -483,9 +483,11 @@ function ReportsTab({ reports }: { reports: AdminReport[] }) {
         <thead>
           <tr>
             <th>Date</th>
+            <th>Report ID</th>
             <th>Type</th>
+            <th>Target</th>
+            <th>Reporter</th>
             <th>Reason</th>
-            <th>Details</th>
             <th className="text-right pr-6">Status</th>
           </tr>
         </thead>
@@ -497,6 +499,7 @@ function ReportsTab({ reports }: { reports: AdminReport[] }) {
               onClick={() => router.push(`/trust-safety/${r.id}`)}
             >
               <td className="text-ink-700">{formatDate(r.createdAt)}</td>
+              <td className="text-ink-700">{r.id}</td>
               <td>
                 <span
                   className={
@@ -509,8 +512,9 @@ function ReportsTab({ reports }: { reports: AdminReport[] }) {
                   {r.targetType === 'post' ? 'Post' : 'User'}
                 </span>
               </td>
+              <td className="text-ink-900 font-medium">{r.targetTitle ?? r.targetId}</td>
+              <td className="text-ink-700">{r.reporterName}</td>
               <td className="text-ink-700">{r.reason}</td>
-              <td className="text-ink-700">{r.details ?? '—'}</td>
               <td className="text-right pr-6">
                 <StatusBadge status={r.status} />
               </td>
