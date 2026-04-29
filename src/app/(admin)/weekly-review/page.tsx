@@ -3,8 +3,16 @@ import { Topbar } from '@/components/Topbar';
 import { getWeeklyMetrics } from '@/lib/fetchers';
 import { WeeklyReviewClient } from './WeeklyReviewClient';
 
-export default async function WeeklyReviewPage() {
-  const data = await getWeeklyMetrics();
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function first(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+export default async function WeeklyReviewPage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+  const date = first(sp.date);
+  const data = await getWeeklyMetrics(date);
 
   return (
     <>

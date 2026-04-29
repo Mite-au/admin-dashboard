@@ -6,12 +6,15 @@ import {
   ArrowRight,
   ArrowUpRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   type LucideIcon,
   MessageSquareText,
   PackageCheck,
   ShoppingBag,
   UserCheck,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/format';
 import type {
   WeeklyCoreKpiKey,
@@ -171,21 +174,60 @@ function MetricCard({
   );
 }
 
+function shiftWeek(isoDate: string, deltaDays: number): string {
+  const d = new Date(isoDate + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function todayUTC(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function WeeklyReviewClient({ data }: { data: WeeklyMetricsResponse }) {
+  const router = useRouter();
   const { entries, strongest, weakest } = getMetricSummaries(data);
   const thisWeekRange = `${formatDate(data.week.thisWeekStart)} - ${formatDate(data.week.thisWeekEnd)}`;
   const lastWeekRange = `${formatDate(data.week.lastWeekStart)} - ${formatDate(data.week.lastWeekEnd)}`;
+
+  const prevDate = shiftWeek(data.week.thisWeekStart, -7);
+  const nextDate = shiftWeek(data.week.thisWeekStart, 7);
+  const isCurrentWeek = data.week.thisWeekStart >= shiftWeek(todayUTC(), -((new Date().getUTCDay() || 7) - 1));
+
+  const goTo = (date: string) => router.push(`?date=${date}`);
 
   return (
     <div className="px-8 pb-8 space-y-6">
       <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
-              Current review window
-            </p>
-            <p className="mt-1 text-xl font-extrabold text-ink-900">{thisWeekRange}</p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => goTo(prevDate)}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-ink-200 text-ink-700 hover:bg-ink-50 transition-colors"
+              aria-label="이전 주"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+                Current review window
+              </p>
+              <p className="mt-1 text-xl font-extrabold text-ink-900">{thisWeekRange}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => goTo(nextDate)}
+              disabled={isCurrentWeek}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-ink-200 text-ink-700 hover:bg-ink-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="다음 주"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
+
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <div className="rounded-xl bg-ink-50 px-4 py-3">
               <p className="text-xs font-medium text-ink-500">Compared with</p>
