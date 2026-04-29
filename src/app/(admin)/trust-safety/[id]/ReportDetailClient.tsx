@@ -1,11 +1,32 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatDate } from '@/lib/format';
+import { updateReportStatus } from '@/lib/actions';
 import type { AdminReport } from '@/lib/types';
 
 export function ReportDetailClient({ report }: { report: AdminReport }) {
+  const router = useRouter();
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleStatusChange = async (next: 'open' | 'resolved') => {
+    if (isPending) return;
+    setIsPending(true);
+    setError(null);
+    try {
+      await updateReportStatus(report.id, next);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Status update failed.');
+    } finally {
+      setIsPending(false);
+    }
+  };
+
   const targetHref =
     report.targetType === 'post'
       ? `/listings/${report.targetId}`
@@ -91,13 +112,30 @@ export function ReportDetailClient({ report }: { report: AdminReport }) {
         >
           View Reporter
         </Link>
-        <button
-          type="button"
-          onClick={() => alert('Resolve is not yet available.')}
-          className="block w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-center text-ink-400 bg-ink-50 cursor-not-allowed opacity-50"
-        >
-          Resolve
-        </button>
+
+        {report.status === 'open' ? (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => handleStatusChange('resolved')}
+            className="block w-full rounded-full bg-ink-900 px-4 py-2 text-sm text-center text-white hover:bg-ink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isPending ? 'Saving…' : 'Resolve'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => handleStatusChange('open')}
+            className="block w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-center text-ink-700 hover:bg-ink-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isPending ? 'Saving…' : 'Reopen'}
+          </button>
+        )}
+
+        {error && (
+          <p className="text-xs text-danger text-center">{error}</p>
+        )}
       </section>
     </div>
   );

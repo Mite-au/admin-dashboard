@@ -55,3 +55,13 @@ export async function updateThreadStatus(
     body: JSON.stringify({ status }),
   });
 }
+
+export async function updateReportStatus(
+  id: string,
+  status: 'open' | 'resolved',
+): Promise<{ id: string; status: string }> {
+  return api<{ id: string; status: string }>(`/admin/reports/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
