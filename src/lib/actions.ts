@@ -7,7 +7,7 @@
  */
 
 import { api } from './api';
-import type { PostStatus, ThreadAdminStatus } from './types';
+import type { AdminReportStatus, PostStatus, ThreadAdminStatus } from './types';
 
 type MutableUserStatus = 'active' | 'suspended' | 'pending_profile';
 type MutablePostStatus = PostStatus;
@@ -58,9 +58,9 @@ export async function updateThreadStatus(
 
 export async function updateReportStatus(
   id: string,
-  status: 'open' | 'resolved',
-): Promise<{ id: string; status: string }> {
-  return api<{ id: string; status: string }>(`/admin/reports/${id}/status`, {
+  status: AdminReportStatus,
+): Promise<{ id: string; status: AdminReportStatus }> {
+  return api<{ id: string; status: AdminReportStatus }>(`/admin/reports/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });

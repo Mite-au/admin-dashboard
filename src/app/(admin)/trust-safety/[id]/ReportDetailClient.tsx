@@ -6,14 +6,14 @@ import { useRouter } from 'next/navigation';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatDate } from '@/lib/format';
 import { updateReportStatus } from '@/lib/actions';
-import type { AdminReport } from '@/lib/types';
+import type { AdminReport, AdminReportStatus } from '@/lib/types';
 
 export function ReportDetailClient({ report }: { report: AdminReport }) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleStatusChange = async (next: 'open' | 'resolved') => {
+  const handleStatusChange = async (next: AdminReportStatus) => {
     if (isPending) return;
     setIsPending(true);
     setError(null);
@@ -56,7 +56,7 @@ export function ReportDetailClient({ report }: { report: AdminReport }) {
           </MetaField>
           <MetaField label="Reason" value={report.reason} />
           <MetaField label="Status">
-            <StatusBadge status={report.status === 'open' ? 'in progress' : 'complete'} />
+            <StatusBadge status={report.status} />
           </MetaField>
           <MetaField label="Created At" value={formatDate(report.createdAt)} />
           <MetaField label="Details" value={report.details ?? '—'} />

@@ -2,6 +2,8 @@ import { api } from './api';
 import type {
   AdminPost,
   AdminReport,
+  AdminReportStatus,
+  AdminReportTargetType,
   AdminThreadDetail,
   AdminThreadListItem,
   AdminTransaction,
@@ -62,8 +64,8 @@ export type TransactionFilters = {
 export type ReportFilters = {
   page?: number;
   pageSize?: number;
-  status?: string;
-  targetType?: string;
+  status?: AdminReportStatus;
+  targetType?: AdminReportTargetType;
 };
 
 export type ThreadFilters = {

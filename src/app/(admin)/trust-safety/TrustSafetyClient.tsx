@@ -9,15 +9,23 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { exportToCsv } from '@/components/ExportCsvButton';
 import { formatDate } from '@/lib/format';
 import type { ReportFilters } from '@/lib/fetchers';
-import type { AdminReport, Paged } from '@/lib/types';
+import type {
+  AdminReport,
+  AdminReportStatus,
+  AdminReportTargetType,
+  Paged,
+} from '@/lib/types';
 
-const TARGET_TYPE_OPTIONS = [
+type ReportTargetTypeFilterValue = AdminReportTargetType | '';
+type ReportStatusFilterValue = AdminReportStatus | '';
+
+const TARGET_TYPE_OPTIONS: ReadonlyArray<{ value: ReportTargetTypeFilterValue; label: string }> = [
   { value: '', label: 'All' },
   { value: 'post', label: 'Post' },
   { value: 'user', label: 'User' },
 ] as const;
 
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: ReadonlyArray<{ value: ReportStatusFilterValue; label: string }> = [
   { value: '', label: 'All' },
   { value: 'open', label: 'Open' },
   { value: 'resolved', label: 'Resolved' },
@@ -44,14 +52,28 @@ export function TrustSafetyClient({
   const pathname = usePathname();
   const [, startTransition] = useTransition();
 
-  const [targetType, setTargetType] = useState(filters.targetType ?? '');
-  const [status, setStatus]         = useState(filters.status ?? '');
+  const [targetType, setTargetType] = useState<ReportTargetTypeFilterValue>(
+    filters.targetType ?? '',
+  );
+  const [status, setStatus] = useState<ReportStatusFilterValue>(filters.status ?? '');
+
+  const toReportTargetType = (
+    value: ReportTargetTypeFilterValue,
+  ): ReportFilters['targetType'] => (value === '' ? undefined : value);
+
+  const toReportStatus = (value: ReportStatusFilterValue): ReportFilters['status'] =>
+    value === '' ? undefined : value;
 
   const pushFilters = (next: Partial<ReportFilters>) => {
     const merged: Record<string, string> = {};
-    const final = { targetType, status, page: filters.page, ...next };
+    const final = {
+      targetType: toReportTargetType(targetType),
+      status: toReportStatus(status),
+      page: filters.page,
+      ...next,
+    };
     for (const [k, v] of Object.entries(final)) {
-      if (v === undefined || v === null || v === '') continue;
+      if (v === undefined || v === null) continue;
       merged[k] = String(v);
     }
     const qs = new URLSearchParams(merged).toString();
@@ -92,8 +114,9 @@ export function TrustSafetyClient({
               className="pill-select pr-8"
               value={targetType}
               onChange={(e) => {
-                setTargetType(e.target.value);
-                pushFilters({ targetType: e.target.value, page: 1 });
+                const nextTargetType = e.target.value as ReportTargetTypeFilterValue;
+                setTargetType(nextTargetType);
+                pushFilters({ targetType: toReportTargetType(nextTargetType), page: 1 });
               }}
             >
               {TARGET_TYPE_OPTIONS.map((o) => (
@@ -114,8 +137,9 @@ export function TrustSafetyClient({
               className="pill-select pr-8"
               value={status}
               onChange={(e) => {
-                setStatus(e.target.value);
-                pushFilters({ status: e.target.value, page: 1 });
+                const nextStatus = e.target.value as ReportStatusFilterValue;
+                setStatus(nextStatus);
+                pushFilters({ status: toReportStatus(nextStatus), page: 1 });
               }}
             >
               {STATUS_OPTIONS.map((o) => (
@@ -172,7 +196,7 @@ export function TrustSafetyClient({
               <td className="text-ink-700">{r.reporterName}</td>
               <td className="text-ink-700">{r.reason}</td>
               <td className="text-right pr-6">
-                <StatusBadge status={r.status === 'open' ? 'in progress' : 'complete'} />
+                <StatusBadge status={r.status} />
               </td>
             </tr>
           ))}

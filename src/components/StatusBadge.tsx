@@ -29,6 +29,7 @@ const map: Record<string, string> = {
   refunded: 'pill-warning',
 
   // Report statuses
+  open: 'pill-warning',
   'in review': 'pill-warning',
   in_review: 'pill-warning',
   resolved: 'pill-success',

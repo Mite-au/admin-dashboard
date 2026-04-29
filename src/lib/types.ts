@@ -2,6 +2,8 @@
 export type PostStatus = 'draft' | 'published' | 'sold' | 'paused' | 'archived' | 'deleted';
 export type ThreadAdminStatus = 'active' | 'flagged' | 'archived' | 'hidden';
 export type ThreadType = 'suburb' | 'interest';
+export type AdminReportStatus = 'open' | 'resolved';
+export type AdminReportTargetType = 'post' | 'user';
 /**
  * Real DB enum values from `users.status`, plus the synthetic `'banned'`
  * which the backend returns when `user_penalties.active = true`.
@@ -144,14 +146,14 @@ export interface Paged<T> {
 
 export interface AdminReport {
   id: string;
-  targetType: 'post' | 'user';
+  targetType: AdminReportTargetType;
   targetId: string;
   targetTitle: string | null;
   reporterId: string;
   reporterName: string;
   reason: string;
   details: string | null;
-  status: 'open' | 'resolved';
+  status: AdminReportStatus;
   createdAt: string;
 }
 

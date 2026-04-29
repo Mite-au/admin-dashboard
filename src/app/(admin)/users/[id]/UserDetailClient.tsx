@@ -512,7 +512,7 @@ function ReportsTab({ reports }: { reports: AdminReport[] }) {
               <td className="text-ink-700">{r.reason}</td>
               <td className="text-ink-700">{r.details ?? '—'}</td>
               <td className="text-right pr-6">
-                <StatusBadge status={r.status === 'open' ? 'in progress' : 'complete'} />
+                <StatusBadge status={r.status} />
               </td>
             </tr>
           ))}
