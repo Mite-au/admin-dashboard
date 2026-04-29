@@ -5,6 +5,12 @@
 html, body { height: 100%; }
 body { @apply bg-page text-ink-900 antialiased; }
 
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* ── Cards ───────────────────────────────────────────────────────────── */
 .card-shell {
   @apply rounded-card bg-white;
