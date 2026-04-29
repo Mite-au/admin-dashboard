@@ -4,11 +4,31 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, Download, RotateCcw, Trash2, MoreVertical } from 'lucide-react';
+import {
+  ArrowUpRight,
+  CalendarDays,
+  ChevronDown,
+  Clock3,
+  Download,
+  Hash,
+  MessageSquareText,
+  MoreVertical,
+  Package,
+  RotateCcw,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import { DetailTabs } from '@/components/DetailTabs';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Pagination } from '@/components/Pagination';
-import { formatCountry, formatDate, formatMoney, formatNumber, isImageSrc } from '@/lib/format';
+import {
+  formatCountry,
+  formatDate,
+  formatDateTime,
+  formatMoney,
+  formatNumber,
+  isImageSrc,
+} from '@/lib/format';
 import { updateUserStatus, updateSuburbVerification } from '@/lib/actions';
 import type { AdminPost, AdminReport, AdminUser, AdminUserConversation, AdminUserPurchase, AdminUserThread, Paged } from '@/lib/types';
 
@@ -528,31 +548,61 @@ function ReportsTab({ reports }: { reports: AdminReport[] }) {
 
 function ThreadsTab({ threads }: { threads: AdminUserThread[] }) {
   if (threads.length === 0) {
-    return <EmptyListState label="No threads" />;
+    return (
+      <EmptyListState
+        label="No joined threads"
+        description="This user has not joined any tracked community threads."
+      />
+    );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-ink-200">
-      <div className="divide-y divide-ink-100">
+    <div className="space-y-4">
+      <ActivityTabHeader
+        label="Joined threads"
+        count={threads.length}
+        description="Thread membership, activity recency, and admin drill-down."
+      />
+
+      <div className="overflow-hidden rounded-xl border border-ink-200 bg-white">
         {threads.map((thread) => (
           <Link
             key={thread.id}
             href={`/threads/${thread.id}`}
-            className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-ink-50"
+            className="group block border-b border-ink-100 px-5 py-4 transition-colors last:border-b-0 hover:bg-ink-50"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-ink-900">{thread.name}</p>
-                <p className="mt-1 text-xs text-ink-500">Thread ID {thread.id}</p>
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="truncate text-sm font-semibold text-ink-900">{thread.name}</p>
+                  <ThreadTypeBadge type={thread.type} />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-ink-500">
+                  <InlineMeta icon={Hash} label={`Thread ID ${thread.id}`} />
+                  <InlineMeta icon={Users} label={`${formatNumber(thread.memberCount)} members`} />
+                </div>
               </div>
-              <span className="rounded-full bg-ink-100 px-2.5 py-1 text-[11px] font-medium capitalize text-ink-700">
-                {thread.type}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-3">
-              <span>Members {formatNumber(thread.memberCount)}</span>
-              <span>Last active {thread.lastActiveAt ? formatDate(thread.lastActiveAt) : '—'}</span>
-              <span>Created {formatDate(thread.createdAt)}</span>
+
+              <div className="grid shrink-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2 xl:min-w-[340px]">
+                <MetaBlock
+                  icon={Clock3}
+                  label="Last active"
+                  value={thread.lastActiveAt ? formatDate(thread.lastActiveAt) : '—'}
+                />
+                <MetaBlock
+                  icon={CalendarDays}
+                  label="Created"
+                  value={formatDate(thread.createdAt)}
+                />
+              </div>
+
+              <div className="flex items-center gap-1 text-xs font-semibold text-brand-600 xl:w-20 xl:justify-end">
+                Open
+                <ArrowUpRight
+                  size={14}
+                  className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                />
+              </div>
             </div>
           </Link>
         ))}
@@ -563,46 +613,194 @@ function ThreadsTab({ threads }: { threads: AdminUserThread[] }) {
 
 function ConversationsTab({ conversations }: { conversations: AdminUserConversation[] }) {
   if (conversations.length === 0) {
-    return <EmptyListState label="No conversations" />;
+    return (
+      <EmptyListState
+        label="No conversations"
+        description="No active conversation records are available for this user."
+      />
+    );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-ink-200">
-      <div className="divide-y divide-ink-100">
+    <div className="space-y-4">
+      <ActivityTabHeader
+        label="Conversation context"
+        count={conversations.length}
+        description="Partner, latest message, recency, and related listing context."
+      />
+
+      <div className="overflow-hidden rounded-xl border border-ink-200 bg-white">
         {conversations.map((conversation) => (
-          <div key={conversation.id} className="px-5 py-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-ink-900">
-                  {conversation.partner.displayName || `m${conversation.partner.id}`}
-                </p>
-                <p className="mt-1 text-xs text-ink-500">Conversation ID {conversation.id}</p>
+          <article key={conversation.id} className="border-b border-ink-100 px-5 py-4 last:border-b-0">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-3">
+                  <PartnerAvatar partner={conversation.partner} />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-ink-900">
+                        {conversation.partner.displayName || `m${conversation.partner.id}`}
+                      </p>
+                      <span className="rounded-md bg-ink-100 px-2 py-0.5 text-[11px] font-medium text-ink-700">
+                        Partner
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-ink-500">
+                      <InlineMeta icon={Hash} label={`Conversation ID ${conversation.id}`} />
+                      <InlineMeta icon={Hash} label={`Partner ID ${conversation.partner.id}`} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-ink-100 bg-ink-50/70 px-4 py-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-medium text-ink-500">
+                    <MessageSquareText size={14} />
+                    Last message
+                  </div>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-6 text-ink-800">
+                    {conversation.lastMessageSnippet || 'No messages yet.'}
+                  </p>
+                </div>
               </div>
-              <span className="text-xs text-ink-500">
-                {conversation.lastMessageAt ? formatDate(conversation.lastMessageAt) : '—'}
-              </span>
+
+              <div className="grid shrink-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2 xl:w-[360px]">
+                <MetaBlock
+                  icon={Clock3}
+                  label="Last message"
+                  value={conversation.lastMessageAt ? formatDateTime(conversation.lastMessageAt) : '—'}
+                />
+                <RelatedPostBlock post={conversation.post} />
+              </div>
             </div>
-            <p className="mt-3 text-sm text-ink-700">
-              {conversation.lastMessageSnippet || 'No messages yet.'}
-            </p>
-            {conversation.post && (
-              <div className="mt-3 rounded-lg bg-ink-50 px-3 py-2 text-sm text-ink-700">
-                <span className="font-medium text-ink-900">{conversation.post.title}</span>
-                <span className="ml-2 text-xs text-ink-500">Post ID {conversation.post.id}</span>
-              </div>
-            )}
-          </div>
+          </article>
         ))}
       </div>
     </div>
   );
 }
 
-function EmptyListState({ label }: { label: string }) {
+function ActivityTabHeader({
+  label,
+  count,
+  description,
+}: {
+  label: string;
+  count: number;
+  description: string;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center h-48 rounded-xl border border-dashed border-ink-200 text-ink-500 text-sm">
-      <MoreVertical size={20} className="mb-2 opacity-40" />
+    <div className="flex flex-col gap-3 rounded-xl border border-ink-100 bg-ink-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-semibold text-ink-900">{label}</p>
+        <p className="mt-1 text-xs text-ink-500">{description}</p>
+      </div>
+      <span className="inline-flex w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink-700 ring-1 ring-ink-100">
+        {formatNumber(count)} records
+      </span>
+    </div>
+  );
+}
+
+function ThreadTypeBadge({ type }: { type: AdminUserThread['type'] }) {
+  return (
+    <span
+      className={
+        'rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ' +
+        (type === 'suburb'
+          ? 'bg-blue-50 text-blue-700'
+          : 'bg-amber-50 text-warning')
+      }
+    >
+      {type}
+    </span>
+  );
+}
+
+function InlineMeta({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof Hash;
+  label: string;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <Icon size={13} strokeWidth={1.8} />
       {label}
+    </span>
+  );
+}
+
+function MetaBlock({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Clock3;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl bg-ink-50 px-3 py-2">
+      <div className="flex items-center gap-2 text-xs font-medium text-ink-500">
+        <Icon size={14} strokeWidth={1.8} />
+        {label}
+      </div>
+      <p className="mt-1 break-words text-sm font-semibold text-ink-900">{value}</p>
+    </div>
+  );
+}
+
+function PartnerAvatar({ partner }: { partner: AdminUserConversation['partner'] }) {
+  if (isImageSrc(partner.avatarUrl)) {
+    return (
+      <Image
+        src={partner.avatarUrl}
+        alt=""
+        width={40}
+        height={40}
+        className="h-10 w-10 shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+
+  const initial = (partner.displayName || partner.id).slice(0, 1).toUpperCase();
+
+  return (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-100 text-sm font-bold text-ink-700">
+      {initial}
+    </div>
+  );
+}
+
+function RelatedPostBlock({ post }: { post?: AdminUserConversation['post'] | null }) {
+  if (!post) {
+    return <MetaBlock icon={Package} label="Related post" value="—" />;
+  }
+
+  return (
+    <div className="rounded-xl bg-ink-50 px-3 py-2">
+      <div className="flex items-center gap-2 text-xs font-medium text-ink-500">
+        <Package size={14} strokeWidth={1.8} />
+        Related post
+      </div>
+      <p className="mt-1 line-clamp-2 text-sm font-semibold text-ink-900">{post.title}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-ink-500">
+        <span>Post ID {post.id}</span>
+        <span className="rounded-md bg-white px-2 py-0.5 font-medium capitalize text-ink-700 ring-1 ring-ink-100">
+          {post.status}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function EmptyListState({ label, description }: { label: string; description?: string }) {
+  return (
+    <div className="flex h-48 flex-col items-center justify-center rounded-xl border border-dashed border-ink-200 px-6 text-center text-sm">
+      <MoreVertical size={20} className="mb-2 text-ink-400" />
+      <p className="font-semibold text-ink-700">{label}</p>
+      {description && <p className="mt-1 max-w-sm text-ink-500">{description}</p>}
     </div>
   );
 }
