@@ -67,6 +67,25 @@ export interface AdminTransaction {
   cancelledAt?: string | null;
 }
 
+export interface AdminUserPurchase {
+  id: string;
+  postId: string;
+  postTitle: string;
+  category: string | null;
+  buyer: string;
+  seller: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'cancelled' | 'disputed' | 'refunded';
+  date: string;
+  createdAt: string;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  sourceType?: string | null;
+  offerId?: string | null;
+  appointmentId?: string | null;
+}
+
 export interface AdminThreadListItem {
   id: string;
   name: string;
