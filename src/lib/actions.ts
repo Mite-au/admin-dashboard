@@ -65,3 +65,11 @@ export async function updateReportStatus(
     body: JSON.stringify({ status }),
   });
 }
+
+export async function resetUserPassword(id: string): Promise<void> {
+  await api<unknown>(`/admin/users/${id}/reset-password`, { method: 'POST' });
+}
+
+export async function resetUserAvatar(id: string): Promise<void> {
+  await api<unknown>(`/admin/users/${id}/avatar`, { method: 'DELETE' });
+}

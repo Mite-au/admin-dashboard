@@ -18,6 +18,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { DetailTabs } from '@/components/DetailTabs';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Pagination } from '@/components/Pagination';
@@ -29,7 +30,7 @@ import {
   formatNumber,
   isImageSrc,
 } from '@/lib/format';
-import { updateUserStatus, updateSuburbVerification } from '@/lib/actions';
+import { updateUserStatus, updateSuburbVerification, resetUserPassword, resetUserAvatar } from '@/lib/actions';
 import type { AdminPost, AdminReport, AdminUser, AdminUserConversation, AdminUserPurchase, AdminUserThread, Paged } from '@/lib/types';
 
 type TabKey = 'sold' | 'purchased' | 'thread' | 'chat' | 'reports' | 'logs';
@@ -40,6 +41,19 @@ type MutableUserStatus = (typeof MUTABLE_USER_STATUSES)[number];
 function isMutableUserStatus(value: string): value is MutableUserStatus {
   return MUTABLE_USER_STATUS_SET.has(value);
 }
+
+type ResetTarget = 'password' | 'avatar' | null;
+
+const RESET_MODAL: Record<NonNullable<ResetTarget>, { title: string; note: string }> = {
+  password: {
+    title: '정말로 패스워드를 리셋하시겠습니까?',
+    note: '이 작업은 즉시 적용됩니다.',
+  },
+  avatar: {
+    title: '정말로 이미지를 리셋하시겠습니까?',
+    note: '이 작업은 즉시 적용됩니다.',
+  },
+};
 
 export function UserDetailClient({
   user,
@@ -56,8 +70,28 @@ export function UserDetailClient({
   purchased: Paged<AdminUserPurchase>;
   reports: AdminReport[];
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState<TabKey>('sold');
   const showItemActions = tab === 'sold';
+  const [resetTarget, setResetTarget] = useState<ResetTarget>(null);
+  const [resetPending, setResetPending] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+
+  const handleReset = async () => {
+    if (!resetTarget || resetPending) return;
+    setResetPending(true);
+    setResetError(null);
+    try {
+      if (resetTarget === 'password') await resetUserPassword(user.id);
+      else await resetUserAvatar(user.id);
+      setResetTarget(null);
+      router.refresh();
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : '처리에 실패했습니다.');
+    } finally {
+      setResetPending(false);
+    }
+  };
 
   return (
     <div className="px-8 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -90,26 +124,28 @@ export function UserDetailClient({
         </div>
 
         <div className="rounded-xl border border-ink-200 p-4 flex items-center gap-4">
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 text-sm text-ink-700 hover:text-ink-900"
-          >
+          <span className="inline-flex items-center gap-1.5 text-sm text-ink-500">
             <RotateCcw size={14} />
             Reset
-          </button>
+          </span>
           <button
             type="button"
-            className="rounded-full border border-ink-200 px-4 py-1.5 text-sm text-ink-700 hover:bg-ink-50"
+            onClick={() => setResetTarget('password')}
+            className="rounded-full border border-ink-200 px-4 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
           >
             Password
           </button>
           <button
             type="button"
-            className="rounded-full border border-ink-200 px-4 py-1.5 text-sm text-ink-700 hover:bg-ink-50"
+            onClick={() => setResetTarget('avatar')}
+            className="rounded-full border border-ink-200 px-4 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
           >
             Profile image
           </button>
         </div>
+        {resetError && (
+          <p className="text-xs text-danger">{resetError}</p>
+        )}
 
         <dl className="grid grid-cols-3 gap-x-4 gap-y-5 text-sm">
           <InfoField label="User ID" value={`m${user.id}`} />
@@ -219,6 +255,23 @@ export function UserDetailClient({
           <Pagination page={1} totalPages={Math.max(1, Math.ceil(sold.total / sold.pageSize))} />
         )}
       </section>
+
+      {resetTarget && (
+        <ConfirmModal
+          open={true}
+          title={RESET_MODAL[resetTarget].title}
+          note={RESET_MODAL[resetTarget].note}
+          variant="default"
+          isPending={resetPending}
+          onConfirm={handleReset}
+          onClose={() => {
+            if (!resetPending) {
+              setResetTarget(null);
+              setResetError(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
