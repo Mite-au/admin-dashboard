@@ -6,6 +6,7 @@ import type {
   AdminThreadListItem,
   AdminTransaction,
   AdminUserConversation,
+  AdminUserPurchase,
   AdminUserThread,
   AdminUser,
   OverviewStats,
@@ -91,7 +92,7 @@ export const getUserConversations = (id: string) =>
   api<AdminUserConversation[]>(`/admin/users/${id}/conversations`);
 
 export const getUserPurchases = (id: string) =>
-  api<Paged<AdminTransaction>>(`/admin/users/${id}/purchases?pageSize=15`);
+  api<Paged<AdminUserPurchase>>(`/admin/users/${id}/purchases?pageSize=15`);
 
 export const getPosts = (filters: PostFilters = {}) =>
   api<Paged<AdminPost>>(`/admin/posts${qs({ pageSize: 15, ...filters })}`);

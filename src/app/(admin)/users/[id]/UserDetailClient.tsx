@@ -10,7 +10,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Pagination } from '@/components/Pagination';
 import { formatCountry, formatDate, formatMoney, formatNumber, isImageSrc } from '@/lib/format';
 import { updateUserStatus, updateSuburbVerification } from '@/lib/actions';
-import type { AdminPost, AdminReport, AdminTransaction, AdminUser, AdminUserConversation, AdminUserThread, Paged } from '@/lib/types';
+import type { AdminPost, AdminReport, AdminUser, AdminUserConversation, AdminUserPurchase, AdminUserThread, Paged } from '@/lib/types';
 
 type TabKey = 'sold' | 'purchased' | 'thread' | 'chat' | 'reports' | 'logs';
 const MUTABLE_USER_STATUSES = ['active', 'suspended', 'pending_profile'] as const;
@@ -33,7 +33,7 @@ export function UserDetailClient({
   sold: Paged<AdminPost>;
   threads: AdminUserThread[];
   conversations: AdminUserConversation[];
-  purchased: Paged<AdminTransaction>;
+  purchased: Paged<AdminUserPurchase>;
   reports: AdminReport[];
 }) {
   const [tab, setTab] = useState<TabKey>('sold');
@@ -186,7 +186,7 @@ export function UserDetailClient({
 
         <div className="pt-5 flex-1">
           {tab === 'sold' && <ItemsTable posts={sold.items} kind="sold" />}
-          {tab === 'purchased' && <PurchasedTable transactions={purchased.items} />}
+          {tab === 'purchased' && <PurchasedTable purchases={purchased.items} />}
           {tab === 'thread' && <ThreadsTab threads={threads} />}
           {tab === 'chat' && <ConversationsTab conversations={conversations} />}
           {tab === 'reports' && <ReportsTab reports={reports} />}
@@ -197,9 +197,6 @@ export function UserDetailClient({
 
         {tab === 'sold' && (
           <Pagination page={1} totalPages={Math.max(1, Math.ceil(sold.total / sold.pageSize))} />
-        )}
-        {tab === 'purchased' && (
-          <Pagination page={1} totalPages={Math.max(1, Math.ceil(purchased.total / purchased.pageSize))} />
         )}
       </section>
     </div>
@@ -419,16 +416,7 @@ function ItemsTable({ posts, kind }: { posts: AdminPost[]; kind: 'sold' | 'purch
   );
 }
 
-const TRANSACTION_STATUS_MAP: Record<AdminTransaction['status'], string> = {
-  completed: 'complete',
-  pending: 'in progress',
-  cancelled: 'fail',
-  disputed: 'fail',
-  refunded: 'fail',
-};
-
-function PurchasedTable({ transactions }: { transactions: AdminTransaction[] }) {
-  const router = useRouter();
+function PurchasedTable({ purchases }: { purchases: AdminUserPurchase[] }) {
   return (
     <div>
       <table className="data-table">
@@ -439,38 +427,39 @@ function PurchasedTable({ transactions }: { transactions: AdminTransaction[] }) 
             <th>Seller</th>
             <th>Item number</th>
             <th>Item title</th>
-            <th className="text-right">Amount</th>
+            <th>Category</th>
+            <th className="text-right">Price</th>
           </tr>
         </thead>
         <tbody>
-          {transactions.map((t) => (
-            <tr
-              key={t.id}
-              className="cursor-pointer"
-              onClick={() => router.push(`/listings/${t.postId}`)}
-            >
-              <td className="text-ink-700">
-                <div>{formatDate(t.createdAt)}</div>
-                <div className="text-xs text-ink-500">
-                  {new Date(t.createdAt).toLocaleTimeString('en-AU', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  })}
-                </div>
-              </td>
-              <td>
-                <StatusBadge status={TRANSACTION_STATUS_MAP[t.status]} />
-              </td>
-              <td className="text-ink-700">{t.seller}</td>
-              <td className="text-ink-700">i{t.postId}</td>
-              <td className="text-ink-900 font-medium">{t.postTitle}</td>
-              <td className="text-right">{formatMoney(t.amount, t.currency)}</td>
-            </tr>
-          ))}
-          {transactions.length === 0 && (
+          {purchases.map((t) => {
+            const displayDate = t.date || t.createdAt;
+            return (
+              <tr key={t.id}>
+                <td className="text-ink-700">
+                  <div>{formatDate(displayDate)}</div>
+                  <div className="text-xs text-ink-500">
+                    {new Date(displayDate).toLocaleTimeString('en-AU', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })}
+                  </div>
+                </td>
+                <td>
+                  <StatusBadge status={t.status} />
+                </td>
+                <td className="text-ink-700">{t.seller}</td>
+                <td className="text-ink-700">i{t.postId}</td>
+                <td className="text-ink-900 font-medium">{t.postTitle}</td>
+                <td className="text-ink-700">{t.category ?? '—'}</td>
+                <td className="text-right">{formatMoney(t.amount, t.currency)}</td>
+              </tr>
+            );
+          })}
+          {purchases.length === 0 && (
             <tr>
-              <td colSpan={6} className="text-center text-ink-500 py-10">
+              <td colSpan={7} className="text-center text-ink-500 py-10">
                 No purchases yet.
               </td>
             </tr>
