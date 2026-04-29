@@ -13,6 +13,7 @@ import type {
   AdminUser,
   OverviewStats,
   Paged,
+  WeeklyMetricsResponse,
 } from './types';
 
 /**
@@ -78,6 +79,9 @@ export type ThreadFilters = {
 };
 
 export const getOverview = () => api<OverviewStats>('/admin/overview');
+
+export const getWeeklyMetrics = (date?: string) =>
+  api<WeeklyMetricsResponse>(`/admin/metrics/weekly${qs({ date })}`);
 
 export const getUsers = (filters: UserFilters = {}) =>
   api<Paged<AdminUser>>(`/admin/users${qs({ pageSize: 15, ...filters })}`);

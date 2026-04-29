@@ -19,6 +19,10 @@ export default function AdminLoading() {
     return <OverviewPageSkeleton />;
   }
 
+  if (pathname === '/weekly-review') {
+    return <OverviewPageSkeleton />;
+  }
+
   if (pathname === '/notification' || pathname === '/ads') {
     return <StubPageSkeleton />;
   }

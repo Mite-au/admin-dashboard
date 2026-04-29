@@ -11,11 +11,13 @@ import {
   MessagesSquare,
   ShieldCheck,
   BellRing,
+  CalendarCheck,
   Megaphone,
 } from 'lucide-react';
 
 const nav = [
   { href: '/overview', label: 'Overview', icon: LayoutDashboard },
+  { href: '/weekly-review', label: 'Weekly Review', icon: CalendarCheck },
   { href: '/users', label: 'User', icon: User },
   { href: '/listings', label: 'Listing', icon: List },
   { href: '/transactions', label: 'Transactions', icon: HandCoins },

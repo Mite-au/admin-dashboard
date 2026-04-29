@@ -167,3 +167,31 @@ export interface OverviewStats {
     reportsOpen: number;
   };
 }
+
+export type WeeklyMetricUnit = 'count' | 'rate';
+export type WeeklyCoreKpiKey =
+  | 'verifiedUsers'
+  | 'firstListingRate'
+  | 'publishedListings'
+  | 'chatStartRate'
+  | 'transactionSignals';
+
+export interface WeeklyMetricValue {
+  thisWeek: number;
+  lastWeek: number;
+  delta: number;
+  unit: WeeklyMetricUnit;
+}
+
+export interface WeeklyMetricsWeekWindow {
+  thisWeekStart: string;
+  thisWeekEnd: string;
+  lastWeekStart: string;
+  lastWeekEnd: string;
+  timezone: string;
+}
+
+export interface WeeklyMetricsResponse {
+  week: WeeklyMetricsWeekWindow;
+  coreKpis: Record<WeeklyCoreKpiKey, WeeklyMetricValue>;
+}
