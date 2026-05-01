@@ -158,13 +158,14 @@ export interface AdminReport {
 }
 
 export interface OverviewStats {
-  activityByDay: { date: string; posts: number; sales: number }[];
+  activityByDay: { date: string; listings: number }[];
   totals: {
     users: number;
-    posts: number;
-    sales: number;
-    revenue: number;
-    reportsOpen: number;
+    verifiedUsers: number;
+    activeListings: number;
+    openReports: number;
+    /** Posts with status=sold. Proxy only — not a confirmed transaction count. */
+    soldPosts?: number;
   };
 }
 

@@ -8,10 +8,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 
-type DataPoint = { date: string; posts: number; sales: number };
+type DataPoint = { date: string; listings: number };
 
 export function ActivityChart({ data }: { data: DataPoint[] }) {
   return (
@@ -30,24 +29,12 @@ export function ActivityChart({ data }: { data: DataPoint[] }) {
           tickLine={false}
           axisLine={false}
         />
-        <Tooltip
-          contentStyle={{ borderRadius: '8px', fontSize: '13px' }}
-        />
-        <Legend wrapperStyle={{ fontSize: '13px', paddingTop: '12px' }} />
+        <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '13px' }} />
         <Line
           type="monotone"
-          dataKey="posts"
-          name="Posts"
+          dataKey="listings"
+          name="Listings"
           stroke="#3b82f6"
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 4 }}
-        />
-        <Line
-          type="monotone"
-          dataKey="sales"
-          name="Sales"
-          stroke="#22c55e"
           strokeWidth={2}
           dot={false}
           activeDot={{ r: 4 }}
