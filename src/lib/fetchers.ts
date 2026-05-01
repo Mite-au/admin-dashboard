@@ -11,6 +11,8 @@ import type {
   AdminUserPurchase,
   AdminUserThread,
   AdminUser,
+  EngagementActivity,
+  EngagementSummary,
   OverviewStats,
   Paged,
   WeeklyMetricsResponse,
@@ -79,6 +81,12 @@ export type ThreadFilters = {
 };
 
 export const getOverview = () => api<OverviewStats>('/admin/overview');
+
+export const getEngagementSummary = () =>
+  api<EngagementSummary>('/admin/engagement/summary');
+
+export const getEngagementActivity = () =>
+  api<EngagementActivity>('/admin/engagement/activity');
 
 export const getWeeklyMetrics = (date?: string) =>
   api<WeeklyMetricsResponse>(`/admin/metrics/weekly${qs({ date })}`);

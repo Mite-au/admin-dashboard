@@ -169,6 +169,27 @@ export interface OverviewStats {
   };
 }
 
+export interface EngagementSummary {
+  activeUsers: number;
+  chatStartedCount: number;
+  /** DM + thread messages combined. */
+  messageSentCount: number;
+  /** Distinct message senders in threads (not total thread members). */
+  threadActiveUsers: number;
+}
+
+export interface EngagementActivityPoint {
+  date: string;
+  chats: number;
+  /** DM + thread messages combined. */
+  messages: number;
+  threadActivity: number;
+}
+
+export interface EngagementActivity {
+  activityByDay: EngagementActivityPoint[];
+}
+
 export type WeeklyMetricUnit = 'count' | 'rate';
 export type WeeklyCoreKpiKey =
   | 'verifiedUsers'
