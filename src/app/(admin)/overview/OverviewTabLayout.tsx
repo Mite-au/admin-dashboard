@@ -1,11 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import type { EngagementActivity, EngagementSummary, OverviewStats } from '@/lib/types';
+import type {
+  ActivityOverview,
+  EngagementActivity,
+  EngagementSummary,
+  ListingsOverview,
+  OverviewStats,
+  ReportsOverview,
+  TransactionsOverview,
+} from '@/lib/types';
 import { ActivityChart } from './ActivityChart';
 import { EngagementChart } from './EngagementChart';
 
 type Tab = 'overview' | 'engagement';
+type OverviewSubTab = 'listings' | 'transactions' | 'reports';
 type EngagementSubTab = 'chat' | 'thread' | 'activity';
 type EngagementSeries = 'chats' | 'messages' | 'threadActivity';
 
@@ -18,12 +27,25 @@ interface Props {
   data: OverviewStats;
   engagementSummary: EngagementSummary | null;
   engagementActivity: EngagementActivity | null;
+  reportsOverview: ReportsOverview | null;
+  transactionsOverview: TransactionsOverview | null;
+  listingsOverview: ListingsOverview | null;
+  activityOverview: ActivityOverview | null;
 }
 
-export function OverviewTabLayout({ data, engagementSummary, engagementActivity }: Props) {
+export function OverviewTabLayout({
+  data,
+  engagementSummary,
+  engagementActivity,
+  reportsOverview,
+  transactionsOverview,
+  listingsOverview,
+  activityOverview,
+}: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [overviewSubTab, setOverviewSubTab] = useState<OverviewSubTab>('listings');
   const [engagementSubTab, setEngagementSubTab] = useState<EngagementSubTab>('chat');
-  const { totals, activityByDay } = data;
+  const { totals } = data;
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
@@ -36,14 +58,10 @@ export function OverviewTabLayout({ data, engagementSummary, engagementActivity 
     { id: 'activity', label: 'Activity' },
   ];
 
-  const overviewCards = [
-    { label: 'Total Users', value: totals.users.toLocaleString() },
-    { label: 'Verified Users', value: totals.verifiedUsers.toLocaleString() },
-    { label: 'Active Listings', value: totals.activeListings.toLocaleString() },
-    { label: 'Open Reports', value: totals.openReports.toLocaleString() },
-    ...(totals.soldPosts != null
-      ? [{ label: 'Sold Posts (status=sold)', value: totals.soldPosts.toLocaleString() }]
-      : []),
+  const overviewSubTabs: { id: OverviewSubTab; label: string }[] = [
+    { id: 'listings', label: 'Listings' },
+    { id: 'transactions', label: 'Transactions' },
+    { id: 'reports', label: 'Reports' },
   ];
 
   const engagementCardsBySubTab: Record<EngagementSubTab, MetricCard[]> | null = engagementSummary
@@ -63,20 +81,38 @@ export function OverviewTabLayout({ data, engagementSummary, engagementActivity 
         },
       ],
       activity: [
-        { label: 'Verified User Count', value: totals.verifiedUsers.toLocaleString() },
-        { label: 'Weekly Returning Verified Users', value: 'Not wired' },
-        { label: 'Sign Up Count', value: 'Not wired' },
+        {
+          label: 'Verified User Count',
+          value: (activityOverview?.totals.verifiedUsers ?? totals.verifiedUsers).toLocaleString(),
+        },
+        {
+          label: 'Weekly Returning Verified Users',
+          value: activityOverview
+            ? activityOverview.totals.weeklyReturningVerifiedUsers.toLocaleString()
+            : 'Not wired',
+        },
+        {
+          label: 'Sign Up Count',
+          value: activityOverview ? activityOverview.totals.signUpCount.toLocaleString() : 'Not wired',
+        },
         { label: 'Active Users', value: engagementSummary.activeUsers.toLocaleString() },
       ],
     }
     : null;
 
   const engagementActivitySecondary: MetricCard[] = [
-    { label: 'Phone Verified Count', value: 'Not wired' },
-    { label: 'Email Verified Count', value: 'Not wired' },
+    {
+      label: 'Phone Verified Count',
+      value: activityOverview ? activityOverview.totals.phoneVerifiedCount.toLocaleString() : 'Not wired',
+    },
+    {
+      label: 'Email Verified Count',
+      value: activityOverview ? activityOverview.totals.emailVerifiedCount.toLocaleString() : 'Not wired',
+    },
   ];
 
   const activityPoints = engagementActivity?.activityByDay ?? [];
+  const activationPoints = activityOverview?.activityByDay ?? [];
   const engagementCards = engagementCardsBySubTab?.[engagementSubTab] ?? null;
   const engagementSecondaryCards = engagementSubTab === 'activity' ? engagementActivitySecondary : [];
 
@@ -107,23 +143,48 @@ export function OverviewTabLayout({ data, engagementSummary, engagementActivity 
       {/* Overview tab */}
       {activeTab === 'overview' && (
         <div id="tabpanel-overview" role="tabpanel" aria-labelledby="tab-overview" className="space-y-8">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
-            {overviewCards.map(({ label, value }) => (
-              <div
-                key={label}
-                className="rounded-2xl border border-ink-100 bg-white p-5 flex flex-col gap-1.5 shadow-sm"
+          <div role="tablist" aria-label="Overview sections" className="flex gap-1 border-b border-ink-100">
+            {overviewSubTabs.map((tab) => (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={overviewSubTab === tab.id}
+                aria-controls={`overview-subpanel-${tab.id}`}
+                id={`overview-subtab-${tab.id}`}
+                onClick={() => setOverviewSubTab(tab.id)}
+                className={[
+                  'px-3 py-2 text-sm font-medium transition-colors',
+                  overviewSubTab === tab.id
+                    ? 'border-b-2 border-blue-600 text-blue-600 -mb-px'
+                    : 'text-ink-500 hover:text-ink-800',
+                ].join(' ')}
               >
-                <span className="text-xs font-medium text-ink-500 uppercase tracking-wide">
-                  {label}
-                </span>
-                <span className="text-2xl font-extrabold text-ink-900">{value}</span>
-              </div>
+                {tab.label}
+              </button>
             ))}
           </div>
 
-          <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-ink-700 mb-4">14-Day Listings</h2>
-            <ActivityChart data={activityByDay} />
+          <div
+            id={`overview-subpanel-${overviewSubTab}`}
+            role="tabpanel"
+            aria-labelledby={`overview-subtab-${overviewSubTab}`}
+            className="space-y-8"
+          >
+            {overviewSubTab === 'listings' && (
+              <ListingsOverviewPanel
+                activeListings={totals.activeListings}
+                listingsOverview={listingsOverview}
+              />
+            )}
+            {overviewSubTab === 'transactions' && (
+              <TransactionsOverviewPanel transactionsOverview={transactionsOverview} />
+            )}
+            {overviewSubTab === 'reports' && (
+              <ReportsOverviewPanel
+                openReportsFallback={totals.openReports}
+                reportsOverview={reportsOverview}
+              />
+            )}
           </div>
         </div>
       )}
@@ -179,7 +240,9 @@ export function OverviewTabLayout({ data, engagementSummary, engagementActivity 
             <EngagementSubTabCharts
               subTab={engagementSubTab}
               data={activityPoints}
+              activationData={activationPoints}
               hasActivityData={engagementActivity !== null}
+              hasActivationData={activityOverview !== null}
             />
           </div>
         </div>
@@ -212,6 +275,177 @@ function MetricCardGrid({
   );
 }
 
+function formatMoney(value: number) {
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function OverviewError({ label }: { label: string }) {
+  return (
+    <div className="rounded-2xl border border-red-100 bg-red-50 p-5 text-sm text-red-700">
+      {label} data could not be loaded. Please try refreshing.
+    </div>
+  );
+}
+
+function ListingsOverviewPanel({
+  activeListings,
+  listingsOverview,
+}: {
+  activeListings: number;
+  listingsOverview: ListingsOverview | null;
+}) {
+  const cards: MetricCard[] = [
+    { label: 'Active Listing Count', value: activeListings.toLocaleString() },
+    {
+      label: 'Listing Published Count',
+      value: listingsOverview
+        ? listingsOverview.totals.listingPublishedCount.toLocaleString()
+        : 'Not wired',
+    },
+    { label: 'First Listing Rate', value: 'Not wired' },
+    {
+      label: 'Listing Detail Views',
+      value: listingsOverview
+        ? listingsOverview.totals.totalListingDetailViews.toLocaleString()
+        : 'Not wired',
+    },
+  ];
+
+  const supportingCards: MetricCard[] = [
+    { label: 'Listing Started Count', value: 'Not wired' },
+    { label: 'Listing Created Count', value: 'Not wired' },
+    {
+      label: 'Repeat Listing User Count',
+      value: listingsOverview
+        ? listingsOverview.totals.repeatListingUserCount.toLocaleString()
+        : 'Not wired',
+    },
+  ];
+
+  return (
+    <>
+      {listingsOverview === null && <OverviewError label="Listings overview" />}
+      <MetricCardGrid cards={cards} columnsClassName="sm:grid-cols-4" />
+      <div className="space-y-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+          Supporting Metrics
+        </h2>
+        <MetricCardGrid cards={supportingCards} columnsClassName="sm:grid-cols-3" />
+      </div>
+      <ChartPanel
+        title="14-Day Listings"
+        data={listingsOverview?.activityByDay ?? []}
+        hasData={listingsOverview !== null}
+        series={[
+          { dataKey: 'listings', name: 'Listings Created', stroke: '#3b82f6' },
+          { dataKey: 'listingsPublished', name: 'Listings Published', stroke: '#22c55e' },
+        ]}
+      />
+    </>
+  );
+}
+
+function TransactionsOverviewPanel({
+  transactionsOverview,
+}: {
+  transactionsOverview: TransactionsOverview | null;
+}) {
+  const cards: MetricCard[] = [
+    {
+      label: 'Completed Accepted Offers',
+      value: transactionsOverview
+        ? transactionsOverview.totals.completedAcceptedOfferCount.toLocaleString()
+        : 'Not wired',
+    },
+    {
+      label: 'Completed Accepted Offer Volume',
+      value: transactionsOverview
+        ? formatMoney(transactionsOverview.totals.completedAcceptedOfferVolume)
+        : 'Not wired',
+    },
+    {
+      label: 'Accepted Offer GMV',
+      value: transactionsOverview
+        ? formatMoney(transactionsOverview.totals.acceptedOfferGmv)
+        : 'Not wired',
+    },
+    { label: 'Sponsored Revenue', value: 'Not wired' },
+  ];
+
+  return (
+    <>
+      {transactionsOverview === null && <OverviewError label="Transactions overview" />}
+      <MetricCardGrid cards={cards} columnsClassName="sm:grid-cols-4" />
+      <ChartPanel
+        title="14-Day Accepted Offer Transactions"
+        data={transactionsOverview?.activityByDay ?? []}
+        hasData={transactionsOverview !== null}
+        series={[
+          {
+            dataKey: 'completedAcceptedOfferCount',
+            name: 'Completed Accepted Offers',
+            stroke: '#3b82f6',
+          },
+          {
+            dataKey: 'completedAcceptedOfferVolume',
+            name: 'Completed Volume',
+            stroke: '#8b5cf6',
+          },
+          { dataKey: 'acceptedOfferGmv', name: 'Accepted Offer GMV', stroke: '#22c55e' },
+        ]}
+      />
+    </>
+  );
+}
+
+function ReportsOverviewPanel({
+  openReportsFallback,
+  reportsOverview,
+}: {
+  openReportsFallback: number;
+  reportsOverview: ReportsOverview | null;
+}) {
+  const cards: MetricCard[] = [
+    {
+      label: 'Open Reports',
+      value: (reportsOverview?.totals.openReports ?? openReportsFallback).toLocaleString(),
+    },
+    {
+      label: 'Reports Created Count',
+      value: reportsOverview
+        ? reportsOverview.totals.reportsCreatedCount.toLocaleString()
+        : 'Not wired',
+    },
+    {
+      label: 'Resolved Reports Count',
+      value: reportsOverview
+        ? reportsOverview.totals.resolvedReportsCount.toLocaleString()
+        : 'Not wired',
+    },
+    { label: 'Pending Reports Count', value: 'Not wired' },
+  ];
+
+  return (
+    <>
+      {reportsOverview === null && <OverviewError label="Reports overview" />}
+      <MetricCardGrid cards={cards} columnsClassName="sm:grid-cols-4" />
+      <ChartPanel
+        title="14-Day Reports"
+        data={reportsOverview?.activityByDay ?? []}
+        hasData={reportsOverview !== null}
+        series={[
+          { dataKey: 'reportsCreated', name: 'Reports Created', stroke: '#3b82f6' },
+          { dataKey: 'reportsResolved', name: 'Reports Resolved', stroke: '#22c55e' },
+        ]}
+      />
+    </>
+  );
+}
+
 function PlaceholderPanel({ title, body }: { title: string; body: string }) {
   return (
     <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
@@ -224,11 +458,15 @@ function PlaceholderPanel({ title, body }: { title: string; body: string }) {
 function EngagementSubTabCharts({
   subTab,
   data,
+  activationData,
   hasActivityData,
+  hasActivationData,
 }: {
   subTab: EngagementSubTab;
   data: EngagementActivity['activityByDay'];
+  activationData: ActivityOverview['activityByDay'];
   hasActivityData: boolean;
+  hasActivationData: boolean;
 }) {
   if (subTab === 'chat') {
     return (
@@ -269,19 +507,46 @@ function EngagementSubTabCharts({
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
-      <PlaceholderPanel
+    <div className="grid gap-4 xl:grid-cols-2">
+      <ChartPanel
         title="14-Day Sign Ups"
-        body="Sign up time series is not wired yet."
+        data={activationData}
+        hasData={hasActivationData}
+        series={[{ dataKey: 'signUps', name: 'Sign Ups', stroke: '#3b82f6' }]}
       />
-      <PlaceholderPanel
+      <ChartPanel
         title="14-Day Verified Users"
-        body="Verified user time series is not wired yet."
+        data={activationData}
+        hasData={hasActivationData}
+        series={[{ dataKey: 'verifiedUsers', name: 'Verified Users', stroke: '#22c55e' }]}
       />
-      <PlaceholderPanel
-        title="14-Day Returning Users"
-        body="Returning user time series is not wired yet."
-      />
+    </div>
+  );
+}
+
+function ChartPanel({
+  title,
+  data,
+  hasData,
+  series,
+}: {
+  title: string;
+  data: Parameters<typeof ActivityChart>[0]['data'];
+  hasData: boolean;
+  series: Parameters<typeof ActivityChart>[0]['series'];
+}) {
+  return (
+    <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
+      <h2 className="text-sm font-semibold text-ink-700 mb-4">{title}</h2>
+      {!hasData ? (
+        <p className="text-sm text-red-600 py-8 text-center">
+          Data could not be loaded. Please try refreshing.
+        </p>
+      ) : data.length === 0 ? (
+        <p className="text-sm text-ink-400 py-8 text-center">No data for this period.</p>
+      ) : (
+        <ActivityChart data={data} series={series} />
+      )}
     </div>
   );
 }

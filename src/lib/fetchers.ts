@@ -1,5 +1,6 @@
 import { api } from './api';
 import type {
+  ActivityOverview,
   AdminPost,
   AdminReport,
   AdminReportStatus,
@@ -13,8 +14,11 @@ import type {
   AdminUser,
   EngagementActivity,
   EngagementSummary,
+  ListingsOverview,
   OverviewStats,
   Paged,
+  ReportsOverview,
+  TransactionsOverview,
   WeeklyMetricsResponse,
 } from './types';
 
@@ -87,6 +91,18 @@ export const getEngagementSummary = () =>
 
 export const getEngagementActivity = () =>
   api<EngagementActivity>('/admin/engagement/activity');
+
+export const getReportsOverview = () =>
+  api<ReportsOverview>('/admin/reports/overview');
+
+export const getTransactionsOverview = () =>
+  api<TransactionsOverview>('/admin/transactions/overview');
+
+export const getListingsOverview = () =>
+  api<ListingsOverview>('/admin/listings/overview');
+
+export const getActivityOverview = () =>
+  api<ActivityOverview>('/admin/activity/overview');
 
 export const getWeeklyMetrics = (date?: string) =>
   api<WeeklyMetricsResponse>(`/admin/metrics/weekly${qs({ date })}`);

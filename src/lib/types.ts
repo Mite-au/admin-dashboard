@@ -190,6 +190,61 @@ export interface EngagementActivity {
   activityByDay: EngagementActivityPoint[];
 }
 
+export interface ReportsOverview {
+  totals: {
+    openReports: number;
+    reportsCreatedCount: number;
+    resolvedReportsCount: number;
+  };
+  activityByDay: {
+    date: string;
+    reportsCreated: number;
+    reportsResolved: number;
+  }[];
+}
+
+export interface TransactionsOverview {
+  totals: {
+    completedAcceptedOfferCount: number;
+    completedAcceptedOfferVolume: number;
+    acceptedOfferGmv: number;
+  };
+  activityByDay: {
+    date: string;
+    completedAcceptedOfferCount: number;
+    completedAcceptedOfferVolume: number;
+    acceptedOfferGmv: number;
+  }[];
+}
+
+export interface ListingsOverview {
+  totals: {
+    listingPublishedCount: number;
+    totalListingDetailViews: number;
+    repeatListingUserCount: number;
+  };
+  activityByDay: {
+    date: string;
+    listings: number;
+    listingsPublished: number;
+  }[];
+}
+
+export interface ActivityOverview {
+  totals: {
+    signUpCount: number;
+    verifiedUsers: number;
+    weeklyReturningVerifiedUsers: number;
+    emailVerifiedCount: number;
+    phoneVerifiedCount: number;
+  };
+  activityByDay: {
+    date: string;
+    signUps: number;
+    verifiedUsers: number;
+  }[];
+}
+
 export type WeeklyMetricUnit = 'count' | 'rate';
 export type WeeklyCoreKpiKey =
   | 'verifiedUsers'

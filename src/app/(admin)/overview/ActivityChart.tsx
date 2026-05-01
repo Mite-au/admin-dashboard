@@ -8,11 +8,27 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
 } from 'recharts';
 
-type DataPoint = { date: string; listings: number };
+type DataPoint = { date: string } & Record<string, string | number>;
+type ChartSeries = {
+  dataKey: string;
+  name: string;
+  stroke: string;
+};
 
-export function ActivityChart({ data }: { data: DataPoint[] }) {
+const defaultSeries: ChartSeries[] = [
+  { dataKey: 'listings', name: 'Listings', stroke: '#3b82f6' },
+];
+
+export function ActivityChart({
+  data,
+  series = defaultSeries,
+}: {
+  data: DataPoint[];
+  series?: ChartSeries[];
+}) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={data} margin={{ top: 8, right: 24, left: 0, bottom: 4 }}>
@@ -30,15 +46,19 @@ export function ActivityChart({ data }: { data: DataPoint[] }) {
           axisLine={false}
         />
         <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '13px' }} />
-        <Line
-          type="monotone"
-          dataKey="listings"
-          name="Listings"
-          stroke="#3b82f6"
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 4 }}
-        />
+        {series.length > 1 && <Legend wrapperStyle={{ fontSize: '13px', paddingTop: '12px' }} />}
+        {series.map((item) => (
+          <Line
+            key={item.dataKey}
+            type="monotone"
+            dataKey={item.dataKey}
+            name={item.name}
+            stroke={item.stroke}
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4 }}
+          />
+        ))}
       </LineChart>
     </ResponsiveContainer>
   );
