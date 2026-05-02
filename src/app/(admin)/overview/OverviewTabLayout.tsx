@@ -69,7 +69,7 @@ export function OverviewTabLayout({
     ? [
       {
         label: 'Chat Button Clicks',
-        value: chatOverview.totals.chatButtonClickCount.toLocaleString(),
+        value: chatOverview.totals.chatButtonClicks.toLocaleString(),
       },
       {
         label: 'Chat Started Count',
@@ -212,7 +212,10 @@ export function OverviewTabLayout({
             className="space-y-8"
           >
             {overviewSubTab === 'listings' && (
-              <ListingsOverviewPanel listingsOverview={listingsOverview} />
+              <ListingsOverviewPanel
+                activeListings={totals.activeListings}
+                listingsOverview={listingsOverview}
+              />
             )}
             {overviewSubTab === 'transactions' && (
               <TransactionsOverviewPanel transactionsOverview={transactionsOverview} />
@@ -346,16 +349,16 @@ function OverviewError({ label }: { label: string }) {
 }
 
 function ListingsOverviewPanel({
+  activeListings,
   listingsOverview,
 }: {
+  activeListings: number;
   listingsOverview: ListingsOverview | null;
 }) {
   const cards: MetricCard[] = [
     {
       label: 'Active Listing Count',
-      value: listingsOverview
-        ? listingsOverview.totals.activeListingCount.toLocaleString()
-        : 'Not wired',
+      value: activeListings.toLocaleString(),
     },
     {
       label: 'Listing Published Count',
@@ -387,7 +390,7 @@ function ListingsOverviewPanel({
     {
       label: 'Listing Created Count',
       value: listingsOverview
-        ? listingsOverview.totals.listingCreatedCount.toLocaleString()
+        ? listingsOverview.totals.listingCreateClickedCount.toLocaleString()
         : 'Not wired',
     },
     {
@@ -565,7 +568,7 @@ function EngagementSubTabCharts({
           hasData={chatOverview !== null}
           series={[
             {
-              dataKey: 'chatStartedCount',
+              dataKey: 'chatStarted',
               name: 'Chat Starts',
               stroke: '#3b82f6',
             },
@@ -577,7 +580,7 @@ function EngagementSubTabCharts({
           hasData={chatOverview !== null}
           series={[
             {
-              dataKey: 'messageSentCount',
+              dataKey: 'messagesSent',
               name: 'Messages Sent',
               stroke: '#8b5cf6',
             },

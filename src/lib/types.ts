@@ -192,7 +192,7 @@ export interface EngagementActivity {
 
 export interface ChatOverview {
   totals: {
-    chatButtonClickCount: number;
+    chatButtonClicks: number;
     chatStartedCount: number;
     /** DM user text messages only. */
     messageSentCount: number;
@@ -200,9 +200,10 @@ export interface ChatOverview {
   };
   activityByDay: {
     date: string;
-    chatStartedCount: number;
+    chatButtonClicks: number;
+    chatStarted: number;
     /** DM user text messages only. */
-    messageSentCount: number;
+    messagesSent: number;
   }[];
 }
 
@@ -249,16 +250,17 @@ export interface TransactionsOverview {
 
 export interface ListingsOverview {
   totals: {
-    activeListingCount: number;
     listingPublishedCount: number;
     firstListingRate: number;
     totalListingDetailViews: number;
     listingStartedCount: number;
-    listingCreatedCount: number;
+    listingCreateClickedCount: number;
     repeatListingUserCount: number;
   };
   activityByDay: {
     date: string;
+    listingStarted: number;
+    listingCreateClicked: number;
     listings: number;
     listingsPublished: number;
   }[];
