@@ -195,10 +195,7 @@ export function OverviewTabLayout({
             className="space-y-8"
           >
             {overviewSubTab === 'listings' && (
-              <ListingsOverviewPanel
-                activeListings={totals.activeListings}
-                listingsOverview={listingsOverview}
-              />
+              <ListingsOverviewPanel listingsOverview={listingsOverview} />
             )}
             {overviewSubTab === 'transactions' && (
               <TransactionsOverviewPanel transactionsOverview={transactionsOverview} />
@@ -321,21 +318,29 @@ function OverviewError({ label }: { label: string }) {
 }
 
 function ListingsOverviewPanel({
-  activeListings,
   listingsOverview,
 }: {
-  activeListings: number;
   listingsOverview: ListingsOverview | null;
 }) {
   const cards: MetricCard[] = [
-    { label: 'Active Listing Count', value: activeListings.toLocaleString() },
+    {
+      label: 'Active Listing Count',
+      value: listingsOverview
+        ? listingsOverview.totals.activeListingCount.toLocaleString()
+        : 'Not wired',
+    },
     {
       label: 'Listing Published Count',
       value: listingsOverview
         ? listingsOverview.totals.listingPublishedCount.toLocaleString()
         : 'Not wired',
     },
-    { label: 'First Listing Rate', value: 'Not wired' },
+    {
+      label: 'First Listing Rate',
+      value: listingsOverview
+        ? formatRate(listingsOverview.totals.firstListingRate)
+        : 'Not wired',
+    },
     {
       label: 'Listing Detail Views',
       value: listingsOverview
@@ -345,8 +350,18 @@ function ListingsOverviewPanel({
   ];
 
   const supportingCards: MetricCard[] = [
-    { label: 'Listing Started Count', value: 'Not wired' },
-    { label: 'Listing Created Count', value: 'Not wired' },
+    {
+      label: 'Listing Started Count',
+      value: listingsOverview
+        ? listingsOverview.totals.listingStartedCount.toLocaleString()
+        : 'Not wired',
+    },
+    {
+      label: 'Listing Created Count',
+      value: listingsOverview
+        ? listingsOverview.totals.listingCreatedCount.toLocaleString()
+        : 'Not wired',
+    },
     {
       label: 'Repeat Listing User Count',
       value: listingsOverview
@@ -365,15 +380,24 @@ function ListingsOverviewPanel({
         </h2>
         <MetricCardGrid cards={supportingCards} columnsClassName="sm:grid-cols-3" />
       </div>
-      <ChartPanel
-        title="14-Day Listings"
-        data={listingsOverview?.activityByDay ?? []}
-        hasData={listingsOverview !== null}
-        series={[
-          { dataKey: 'listings', name: 'Listings Created', stroke: '#3b82f6' },
-          { dataKey: 'listingsPublished', name: 'Listings Published', stroke: '#22c55e' },
-        ]}
-      />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <ChartPanel
+          title="14-Day Listings"
+          data={listingsOverview?.activityByDay ?? []}
+          hasData={listingsOverview !== null}
+          series={[
+            { dataKey: 'listings', name: 'Listings', stroke: '#3b82f6' },
+          ]}
+        />
+        <ChartPanel
+          title="14-Day Listing Published"
+          data={listingsOverview?.activityByDay ?? []}
+          hasData={listingsOverview !== null}
+          series={[
+            { dataKey: 'listingsPublished', name: 'Listings Published', stroke: '#22c55e' },
+          ]}
+        />
+      </div>
     </>
   );
 }

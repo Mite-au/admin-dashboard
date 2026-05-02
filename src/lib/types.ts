@@ -235,8 +235,12 @@ export interface TransactionsOverview {
 
 export interface ListingsOverview {
   totals: {
+    activeListingCount: number;
     listingPublishedCount: number;
+    firstListingRate: number;
     totalListingDetailViews: number;
+    listingStartedCount: number;
+    listingCreatedCount: number;
     repeatListingUserCount: number;
   };
   activityByDay: {
