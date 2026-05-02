@@ -12,6 +12,7 @@ import type {
   AdminUserPurchase,
   AdminUserThread,
   AdminUser,
+  ChatOverview,
   EngagementActivity,
   EngagementSummary,
   ListingsOverview,
@@ -91,6 +92,9 @@ export const getEngagementSummary = () =>
 
 export const getEngagementActivity = () =>
   api<EngagementActivity>('/admin/engagement/activity');
+
+export const getChatOverview = () =>
+  api<ChatOverview>('/admin/chat/overview');
 
 export const getReportsOverview = () =>
   api<ReportsOverview>('/admin/reports/overview');

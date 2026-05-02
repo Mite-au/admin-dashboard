@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type {
   ActivityOverview,
+  ChatOverview,
   EngagementActivity,
   EngagementSummary,
   ListingsOverview,
@@ -25,6 +26,7 @@ type MetricCard = {
 
 interface Props {
   data: OverviewStats;
+  chatOverview: ChatOverview | null;
   engagementSummary: EngagementSummary | null;
   engagementActivity: EngagementActivity | null;
   reportsOverview: ReportsOverview | null;
@@ -35,6 +37,7 @@ interface Props {
 
 export function OverviewTabLayout({
   data,
+  chatOverview,
   engagementSummary,
   engagementActivity,
   reportsOverview,
@@ -64,14 +67,29 @@ export function OverviewTabLayout({
     { id: 'reports', label: 'Reports' },
   ];
 
-  const engagementCardsBySubTab: Record<EngagementSubTab, MetricCard[]> | null = engagementSummary
+  const chatCards: MetricCard[] | null = chatOverview
+    ? [
+      {
+        label: 'Chat Button Clicks',
+        value: chatOverview.totals.chatButtonClickCount.toLocaleString(),
+      },
+      {
+        label: 'Chat Started Count',
+        value: chatOverview.totals.chatStartedCount.toLocaleString(),
+      },
+      {
+        label: 'Message Sent Count',
+        value: chatOverview.totals.messageSentCount.toLocaleString(),
+      },
+      {
+        label: 'Listing → Chat Start Rate',
+        value: formatRate(chatOverview.totals.listingToChatStartRate),
+      },
+    ]
+    : null;
+
+  const engagementCardsBySubTab: Record<Exclude<EngagementSubTab, 'chat'>, MetricCard[]> | null = engagementSummary
     ? {
-      chat: [
-        { label: 'Chat Button Clicks', value: 'Not wired' },
-        { label: 'Chat Started Count', value: engagementSummary.chatStartedCount.toLocaleString() },
-        { label: 'Message Sent Count', value: 'Not wired' },
-        { label: 'Listing to Chat Start Rate', value: 'Not wired' },
-      ],
       thread: [
         { label: 'Thread Open Count', value: 'Not wired' },
         { label: 'Thread Join Count', value: 'Not wired' },
@@ -113,8 +131,14 @@ export function OverviewTabLayout({
 
   const activityPoints = engagementActivity?.activityByDay ?? [];
   const activationPoints = activityOverview?.activityByDay ?? [];
-  const engagementCards = engagementCardsBySubTab?.[engagementSubTab] ?? null;
+  const engagementCards = engagementSubTab === 'chat'
+    ? chatCards
+    : engagementCardsBySubTab?.[engagementSubTab] ?? null;
   const engagementSecondaryCards = engagementSubTab === 'activity' ? engagementActivitySecondary : [];
+  const hasEngagementCardData = engagementSubTab === 'chat'
+    ? chatOverview !== null
+    : engagementSummary !== null;
+  const engagementErrorLabel = engagementSubTab === 'chat' ? 'Chat overview' : 'Engagement summary';
 
   return (
     <div className="px-8 pb-8 space-y-6">
@@ -220,9 +244,9 @@ export function OverviewTabLayout({
             aria-labelledby={`engagement-subtab-${engagementSubTab}`}
             className="space-y-8"
           >
-            {engagementSummary === null ? (
+            {!hasEngagementCardData ? (
               <div className="rounded-2xl border border-red-100 bg-red-50 p-5 text-sm text-red-700">
-                Engagement summary could not be loaded. Please try refreshing.
+                {engagementErrorLabel} could not be loaded. Please try refreshing.
               </div>
             ) : (
               <MetricCardGrid cards={engagementCards ?? []} columnsClassName="sm:grid-cols-4" />
@@ -239,6 +263,7 @@ export function OverviewTabLayout({
 
             <EngagementSubTabCharts
               subTab={engagementSubTab}
+              chatOverview={chatOverview}
               data={activityPoints}
               activationData={activationPoints}
               hasActivityData={engagementActivity !== null}
@@ -281,6 +306,10 @@ function formatMoney(value: number) {
     currency: 'AUD',
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function formatRate(value: number) {
+  return `${Math.round(value * 100)}%`;
 }
 
 function OverviewError({ label }: { label: string }) {
@@ -466,12 +495,14 @@ function PlaceholderPanel({ title, body }: { title: string; body: string }) {
 
 function EngagementSubTabCharts({
   subTab,
+  chatOverview,
   data,
   activationData,
   hasActivityData,
   hasActivationData,
 }: {
   subTab: EngagementSubTab;
+  chatOverview: ChatOverview | null;
   data: EngagementActivity['activityByDay'];
   activationData: ActivityOverview['activityByDay'];
   hasActivityData: boolean;
@@ -480,15 +511,29 @@ function EngagementSubTabCharts({
   if (subTab === 'chat') {
     return (
       <div className="grid gap-4 xl:grid-cols-2">
-        <EngagementChartPanel
+        <ChartPanel
           title="14-Day Chat Starts"
-          data={data}
-          hasActivityData={hasActivityData}
-          series={['chats']}
+          data={chatOverview?.activityByDay ?? []}
+          hasData={chatOverview !== null}
+          series={[
+            {
+              dataKey: 'chatStartedCount',
+              name: 'Chat Starts',
+              stroke: '#3b82f6',
+            },
+          ]}
         />
-        <PlaceholderPanel
+        <ChartPanel
           title="14-Day Messages Sent"
-          body="Chat-only message time series is not wired yet."
+          data={chatOverview?.activityByDay ?? []}
+          hasData={chatOverview !== null}
+          series={[
+            {
+              dataKey: 'messageSentCount',
+              name: 'Messages Sent',
+              stroke: '#8b5cf6',
+            },
+          ]}
         />
       </div>
     );

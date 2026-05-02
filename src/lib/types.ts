@@ -190,6 +190,22 @@ export interface EngagementActivity {
   activityByDay: EngagementActivityPoint[];
 }
 
+export interface ChatOverview {
+  totals: {
+    chatButtonClickCount: number;
+    chatStartedCount: number;
+    /** DM user text messages only. */
+    messageSentCount: number;
+    listingToChatStartRate: number;
+  };
+  activityByDay: {
+    date: string;
+    chatStartedCount: number;
+    /** DM user text messages only. */
+    messageSentCount: number;
+  }[];
+}
+
 export interface ReportsOverview {
   totals: {
     openReports: number;

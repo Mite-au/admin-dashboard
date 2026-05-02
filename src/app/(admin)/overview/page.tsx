@@ -2,6 +2,7 @@ import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
 import {
   getActivityOverview,
+  getChatOverview,
   getEngagementActivity,
   getEngagementSummary,
   getListingsOverview,
@@ -14,6 +15,7 @@ import { OverviewTabLayout } from './OverviewTabLayout';
 export default async function OverviewPage() {
   const [
     overview,
+    chatOverview,
     engagementSummary,
     engagementActivity,
     reportsOverview,
@@ -22,6 +24,7 @@ export default async function OverviewPage() {
     activityOverview,
   ] = await Promise.all([
     getOverview(),
+    getChatOverview().catch(() => null),
     getEngagementSummary().catch(() => null),
     getEngagementActivity().catch(() => null),
     getReportsOverview().catch(() => null),
@@ -36,6 +39,7 @@ export default async function OverviewPage() {
       <PageHeader title="Overview" />
       <OverviewTabLayout
         data={overview}
+        chatOverview={chatOverview}
         engagementSummary={engagementSummary}
         engagementActivity={engagementActivity}
         reportsOverview={reportsOverview}
