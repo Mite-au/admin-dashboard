@@ -321,8 +321,20 @@ function formatMoney(value: number) {
   }).format(value);
 }
 
+function formatSafeMoney(value: number | null | undefined) {
+  return formatMoney(toSafeNumber(value));
+}
+
 function formatRate(value: number) {
   return `${Math.round(value * 100)}%`;
+}
+
+function formatSafeCount(value: number | null | undefined) {
+  return toSafeNumber(value).toLocaleString();
+}
+
+function toSafeNumber(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
 function OverviewError({ label }: { label: string }) {
@@ -423,23 +435,30 @@ function TransactionsOverviewPanel({
 }: {
   transactionsOverview: TransactionsOverview | null;
 }) {
+  const transactionActivityByDay = (transactionsOverview?.activityByDay ?? []).map((item) => ({
+    date: item.date,
+    confirmedTransactionCount: toSafeNumber(item.confirmedTransactionCount),
+    confirmedTransactionVolume: toSafeNumber(item.confirmedTransactionVolume),
+    gmv: toSafeNumber(item.gmv),
+  }));
+
   const cards: MetricCard[] = [
     {
       label: 'Confirmed Transaction Count',
       value: transactionsOverview
-        ? transactionsOverview.totals.confirmedTransactionCount.toLocaleString()
+        ? formatSafeCount(transactionsOverview.totals.confirmedTransactionCount)
         : 'Not wired',
     },
     {
       label: 'Confirmed Transaction Volume',
       value: transactionsOverview
-        ? formatMoney(transactionsOverview.totals.confirmedTransactionVolume)
+        ? formatSafeMoney(transactionsOverview.totals.confirmedTransactionVolume)
         : 'Not wired',
     },
     {
       label: 'GMV',
       value: transactionsOverview
-        ? formatMoney(transactionsOverview.totals.gmv)
+        ? formatSafeMoney(transactionsOverview.totals.gmv)
         : 'Not wired',
     },
     { label: 'Sponsored Revenue', value: 'Not wired' },
@@ -452,7 +471,7 @@ function TransactionsOverviewPanel({
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartPanel
           title="14-Day Confirmed Transactions"
-          data={transactionsOverview?.activityByDay ?? []}
+          data={transactionActivityByDay}
           hasData={transactionsOverview !== null}
           series={[
             {
@@ -464,7 +483,7 @@ function TransactionsOverviewPanel({
         />
         <ChartPanel
           title="14-Day Transaction Volume / GMV"
-          data={transactionsOverview?.activityByDay ?? []}
+          data={transactionActivityByDay}
           hasData={transactionsOverview !== null}
           series={[
             {
