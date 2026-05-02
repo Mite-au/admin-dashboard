@@ -356,21 +356,21 @@ function TransactionsOverviewPanel({
 }) {
   const cards: MetricCard[] = [
     {
-      label: 'Completed Accepted Offers',
+      label: 'Confirmed Transaction Count',
       value: transactionsOverview
-        ? transactionsOverview.totals.completedAcceptedOfferCount.toLocaleString()
+        ? transactionsOverview.totals.confirmedTransactionCount.toLocaleString()
         : 'Not wired',
     },
     {
-      label: 'Completed Accepted Offer Volume',
+      label: 'Confirmed Transaction Volume',
       value: transactionsOverview
-        ? formatMoney(transactionsOverview.totals.completedAcceptedOfferVolume)
+        ? formatMoney(transactionsOverview.totals.confirmedTransactionVolume)
         : 'Not wired',
     },
     {
-      label: 'Accepted Offer GMV',
+      label: 'GMV',
       value: transactionsOverview
-        ? formatMoney(transactionsOverview.totals.acceptedOfferGmv)
+        ? formatMoney(transactionsOverview.totals.gmv)
         : 'Not wired',
     },
     { label: 'Sponsored Revenue', value: 'Not wired' },
@@ -380,24 +380,33 @@ function TransactionsOverviewPanel({
     <>
       {transactionsOverview === null && <OverviewError label="Transactions overview" />}
       <MetricCardGrid cards={cards} columnsClassName="sm:grid-cols-4" />
-      <ChartPanel
-        title="14-Day Accepted Offer Transactions"
-        data={transactionsOverview?.activityByDay ?? []}
-        hasData={transactionsOverview !== null}
-        series={[
-          {
-            dataKey: 'completedAcceptedOfferCount',
-            name: 'Completed Accepted Offers',
-            stroke: '#3b82f6',
-          },
-          {
-            dataKey: 'completedAcceptedOfferVolume',
-            name: 'Completed Volume',
-            stroke: '#8b5cf6',
-          },
-          { dataKey: 'acceptedOfferGmv', name: 'Accepted Offer GMV', stroke: '#22c55e' },
-        ]}
-      />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <ChartPanel
+          title="14-Day Confirmed Transactions"
+          data={transactionsOverview?.activityByDay ?? []}
+          hasData={transactionsOverview !== null}
+          series={[
+            {
+              dataKey: 'confirmedTransactionCount',
+              name: 'Confirmed Transactions',
+              stroke: '#3b82f6',
+            },
+          ]}
+        />
+        <ChartPanel
+          title="14-Day Transaction Volume / GMV"
+          data={transactionsOverview?.activityByDay ?? []}
+          hasData={transactionsOverview !== null}
+          series={[
+            {
+              dataKey: 'confirmedTransactionVolume',
+              name: 'Confirmed Transaction Volume',
+              stroke: '#8b5cf6',
+            },
+            { dataKey: 'gmv', name: 'GMV', stroke: '#22c55e' },
+          ]}
+        />
+      </div>
     </>
   );
 }

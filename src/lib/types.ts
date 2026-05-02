@@ -205,15 +205,15 @@ export interface ReportsOverview {
 
 export interface TransactionsOverview {
   totals: {
-    completedAcceptedOfferCount: number;
-    completedAcceptedOfferVolume: number;
-    acceptedOfferGmv: number;
+    confirmedTransactionCount: number;
+    confirmedTransactionVolume: number;
+    gmv: number;
   };
   activityByDay: {
     date: string;
-    completedAcceptedOfferCount: number;
-    completedAcceptedOfferVolume: number;
-    acceptedOfferGmv: number;
+    confirmedTransactionCount: number;
+    confirmedTransactionVolume: number;
+    gmv: number;
   }[];
 }
 
