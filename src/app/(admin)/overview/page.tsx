@@ -3,11 +3,11 @@ import { PageHeader } from '@/components/PageHeader';
 import {
   getActivityOverview,
   getChatOverview,
-  getEngagementActivity,
   getEngagementSummary,
   getListingsOverview,
   getOverview,
   getReportsOverview,
+  getThreadsOverview,
   getTransactionsOverview,
 } from '@/lib/fetchers';
 import { OverviewTabLayout } from './OverviewTabLayout';
@@ -16,8 +16,8 @@ export default async function OverviewPage() {
   const [
     overview,
     chatOverview,
+    threadsOverview,
     engagementSummary,
-    engagementActivity,
     reportsOverview,
     transactionsOverview,
     listingsOverview,
@@ -25,8 +25,8 @@ export default async function OverviewPage() {
   ] = await Promise.all([
     getOverview(),
     getChatOverview().catch(() => null),
+    getThreadsOverview().catch(() => null),
     getEngagementSummary().catch(() => null),
-    getEngagementActivity().catch(() => null),
     getReportsOverview().catch(() => null),
     getTransactionsOverview().catch(() => null),
     getListingsOverview().catch(() => null),
@@ -40,8 +40,8 @@ export default async function OverviewPage() {
       <OverviewTabLayout
         data={overview}
         chatOverview={chatOverview}
+        threadsOverview={threadsOverview}
         engagementSummary={engagementSummary}
-        engagementActivity={engagementActivity}
         reportsOverview={reportsOverview}
         transactionsOverview={transactionsOverview}
         listingsOverview={listingsOverview}

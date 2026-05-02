@@ -19,6 +19,7 @@ import type {
   OverviewStats,
   Paged,
   ReportsOverview,
+  ThreadsOverview,
   TransactionsOverview,
   WeeklyMetricsResponse,
 } from './types';
@@ -95,6 +96,9 @@ export const getEngagementActivity = () =>
 
 export const getChatOverview = () =>
   api<ChatOverview>('/admin/chat/overview');
+
+export const getThreadsOverview = () =>
+  api<ThreadsOverview>('/admin/threads/overview');
 
 export const getReportsOverview = () =>
   api<ReportsOverview>('/admin/reports/overview');

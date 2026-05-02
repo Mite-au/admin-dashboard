@@ -4,20 +4,18 @@ import { useState } from 'react';
 import type {
   ActivityOverview,
   ChatOverview,
-  EngagementActivity,
   EngagementSummary,
   ListingsOverview,
   OverviewStats,
   ReportsOverview,
+  ThreadsOverview,
   TransactionsOverview,
 } from '@/lib/types';
 import { ActivityChart } from './ActivityChart';
-import { EngagementChart } from './EngagementChart';
 
 type Tab = 'overview' | 'engagement';
 type OverviewSubTab = 'listings' | 'transactions' | 'reports';
 type EngagementSubTab = 'chat' | 'thread' | 'activity';
-type EngagementSeries = 'chats' | 'messages' | 'threadActivity';
 
 type MetricCard = {
   label: string;
@@ -27,8 +25,8 @@ type MetricCard = {
 interface Props {
   data: OverviewStats;
   chatOverview: ChatOverview | null;
+  threadsOverview: ThreadsOverview | null;
   engagementSummary: EngagementSummary | null;
-  engagementActivity: EngagementActivity | null;
   reportsOverview: ReportsOverview | null;
   transactionsOverview: TransactionsOverview | null;
   listingsOverview: ListingsOverview | null;
@@ -38,8 +36,8 @@ interface Props {
 export function OverviewTabLayout({
   data,
   chatOverview,
+  threadsOverview,
   engagementSummary,
-  engagementActivity,
   reportsOverview,
   transactionsOverview,
   listingsOverview,
@@ -88,16 +86,25 @@ export function OverviewTabLayout({
     ]
     : null;
 
-  const engagementCardsBySubTab: Record<Exclude<EngagementSubTab, 'chat'>, MetricCard[]> | null = engagementSummary
+  const threadCards: MetricCard[] | null = threadsOverview
+    ? [
+      {
+        label: 'Thread Open Count',
+        value: threadsOverview.totals.threadOpenCount.toLocaleString(),
+      },
+      {
+        label: 'Thread Join Count',
+        value: threadsOverview.totals.threadJoinCount.toLocaleString(),
+      },
+      {
+        label: 'Thread Active Users',
+        value: threadsOverview.totals.threadActiveUsers.toLocaleString(),
+      },
+    ]
+    : null;
+
+  const engagementCardsBySubTab: Record<Exclude<EngagementSubTab, 'chat' | 'thread'>, MetricCard[]> | null = engagementSummary
     ? {
-      thread: [
-        { label: 'Thread Open Count', value: 'Not wired' },
-        { label: 'Thread Join Count', value: 'Not wired' },
-        {
-          label: 'Thread Active Users',
-          value: engagementSummary.threadActiveUsers.toLocaleString(),
-        },
-      ],
       activity: [
         {
           label: 'Verified User Count',
@@ -129,16 +136,26 @@ export function OverviewTabLayout({
     },
   ];
 
-  const activityPoints = engagementActivity?.activityByDay ?? [];
   const activationPoints = activityOverview?.activityByDay ?? [];
-  const engagementCards = engagementSubTab === 'chat'
-    ? chatCards
-    : engagementCardsBySubTab?.[engagementSubTab] ?? null;
+  const engagementCards =
+    engagementSubTab === 'chat'
+      ? chatCards
+      : engagementSubTab === 'thread'
+        ? threadCards
+        : engagementCardsBySubTab?.[engagementSubTab] ?? null;
   const engagementSecondaryCards = engagementSubTab === 'activity' ? engagementActivitySecondary : [];
-  const hasEngagementCardData = engagementSubTab === 'chat'
-    ? chatOverview !== null
-    : engagementSummary !== null;
-  const engagementErrorLabel = engagementSubTab === 'chat' ? 'Chat overview' : 'Engagement summary';
+  const hasEngagementCardData =
+    engagementSubTab === 'chat'
+      ? chatOverview !== null
+      : engagementSubTab === 'thread'
+        ? threadsOverview !== null
+        : engagementSummary !== null;
+  const engagementErrorLabel =
+    engagementSubTab === 'chat'
+      ? 'Chat overview'
+      : engagementSubTab === 'thread'
+        ? 'Threads overview'
+        : 'Engagement summary';
 
   return (
     <div className="px-8 pb-8 space-y-6">
@@ -261,9 +278,8 @@ export function OverviewTabLayout({
             <EngagementSubTabCharts
               subTab={engagementSubTab}
               chatOverview={chatOverview}
-              data={activityPoints}
+              threadsOverview={threadsOverview}
               activationData={activationPoints}
-              hasActivityData={engagementActivity !== null}
               hasActivationData={activityOverview !== null}
             />
           </div>
@@ -508,28 +524,17 @@ function ReportsOverviewPanel({
   );
 }
 
-function PlaceholderPanel({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
-      <h2 className="text-sm font-semibold text-ink-700 mb-3">{title}</h2>
-      <p className="text-sm text-ink-400 py-8 text-center">{body}</p>
-    </div>
-  );
-}
-
 function EngagementSubTabCharts({
   subTab,
   chatOverview,
-  data,
+  threadsOverview,
   activationData,
-  hasActivityData,
   hasActivationData,
 }: {
   subTab: EngagementSubTab;
   chatOverview: ChatOverview | null;
-  data: EngagementActivity['activityByDay'];
+  threadsOverview: ThreadsOverview | null;
   activationData: ActivityOverview['activityByDay'];
-  hasActivityData: boolean;
   hasActivationData: boolean;
 }) {
   if (subTab === 'chat') {
@@ -566,19 +571,41 @@ function EngagementSubTabCharts({
   if (subTab === 'thread') {
     return (
       <div className="grid gap-4 xl:grid-cols-3">
-        <PlaceholderPanel
+        <ChartPanel
           title="14-Day Thread Opens"
-          body="Thread open time series is not wired yet."
+          data={threadsOverview?.activityByDay ?? []}
+          hasData={threadsOverview !== null}
+          series={[
+            {
+              dataKey: 'threadOpens',
+              name: 'Thread Opens',
+              stroke: '#3b82f6',
+            },
+          ]}
         />
-        <PlaceholderPanel
+        <ChartPanel
           title="14-Day Thread Joins"
-          body="Thread join time series is not wired yet."
+          data={threadsOverview?.activityByDay ?? []}
+          hasData={threadsOverview !== null}
+          series={[
+            {
+              dataKey: 'threadJoins',
+              name: 'Thread Joins',
+              stroke: '#8b5cf6',
+            },
+          ]}
         />
-        <EngagementChartPanel
+        <ChartPanel
           title="14-Day Thread Activity"
-          data={data}
-          hasActivityData={hasActivityData}
-          series={['threadActivity']}
+          data={threadsOverview?.activityByDay ?? []}
+          hasData={threadsOverview !== null}
+          series={[
+            {
+              dataKey: 'threadActivity',
+              name: 'Thread Activity',
+              stroke: '#22c55e',
+            },
+          ]}
         />
       </div>
     );
@@ -624,33 +651,6 @@ function ChartPanel({
         <p className="text-sm text-ink-400 py-8 text-center">No data for this period.</p>
       ) : (
         <ActivityChart data={data} series={series} />
-      )}
-    </div>
-  );
-}
-
-function EngagementChartPanel({
-  title,
-  data,
-  hasActivityData,
-  series,
-}: {
-  title: string;
-  data: EngagementActivity['activityByDay'];
-  hasActivityData: boolean;
-  series: EngagementSeries[];
-}) {
-  return (
-    <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
-      <h2 className="text-sm font-semibold text-ink-700 mb-4">{title}</h2>
-      {!hasActivityData ? (
-        <p className="text-sm text-red-600 py-8 text-center">
-          Activity data could not be loaded. Please try refreshing.
-        </p>
-      ) : data.length === 0 ? (
-        <p className="text-sm text-ink-400 py-8 text-center">No activity data for this period.</p>
-      ) : (
-        <EngagementChart data={data} series={series} />
       )}
     </div>
   );

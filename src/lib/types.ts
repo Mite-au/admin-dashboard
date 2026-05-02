@@ -206,6 +206,20 @@ export interface ChatOverview {
   }[];
 }
 
+export interface ThreadsOverview {
+  totals: {
+    threadOpenCount: number;
+    threadJoinCount: number;
+    threadActiveUsers: number;
+  };
+  activityByDay: {
+    date: string;
+    threadOpens: number;
+    threadJoins: number;
+    threadActivity: number;
+  }[];
+}
+
 export interface ReportsOverview {
   totals: {
     openReports: number;
