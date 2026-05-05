@@ -198,6 +198,12 @@ export interface ChatOverview {
     messageSentCount: number;
     listingToChatStartRate: number;
   };
+  previousTotals?: {
+    chatButtonClicks: number;
+    chatStartedCount: number;
+    messageSentCount: number;
+    listingToChatStartRate: number;
+  };
   activityByDay: {
     date: string;
     chatButtonClicks: number;
@@ -209,6 +215,11 @@ export interface ChatOverview {
 
 export interface ThreadsOverview {
   totals: {
+    threadOpenCount: number;
+    threadJoinCount: number;
+    threadActiveUsers: number;
+  };
+  previousTotals?: {
     threadOpenCount: number;
     threadJoinCount: number;
     threadActiveUsers: number;
@@ -227,6 +238,10 @@ export interface ReportsOverview {
     reportsCreatedCount: number;
     resolvedReportsCount: number;
   };
+  previousTotals?: {
+    reportsCreatedCount: number;
+    resolvedReportsCount: number;
+  };
   activityByDay: {
     date: string;
     reportsCreated: number;
@@ -236,6 +251,11 @@ export interface ReportsOverview {
 
 export interface TransactionsOverview {
   totals: {
+    confirmedTransactionCount: number;
+    confirmedTransactionVolume: number;
+    gmv: number;
+  };
+  previousTotals?: {
     confirmedTransactionCount: number;
     confirmedTransactionVolume: number;
     gmv: number;
@@ -257,6 +277,13 @@ export interface ListingsOverview {
     listingCreateClickedCount: number;
     repeatListingUserCount: number;
   };
+  previousTotals?: {
+    listingPublishedCount: number;
+    firstListingRate: number;
+    listingStartedCount: number;
+    listingCreateClickedCount: number;
+    repeatListingUserCount: number;
+  };
   activityByDay: {
     date: string;
     listingStarted: number;
@@ -273,6 +300,10 @@ export interface ActivityOverview {
     weeklyReturningVerifiedUsers: number;
     emailVerifiedCount: number;
     phoneVerifiedCount: number;
+  };
+  previousTotals?: {
+    /** Only period KPIs are comparable across periods. */
+    signUpCount: number;
   };
   activityByDay: {
     date: string;

@@ -86,31 +86,37 @@ export type ThreadFilters = {
   memberId?: string;
 };
 
-export const getOverview = () => api<OverviewStats>('/admin/overview');
+export type PeriodFilter = {
+  from?: string;
+  to?: string;
+};
 
-export const getEngagementSummary = () =>
-  api<EngagementSummary>('/admin/engagement/summary');
+export const getOverview = (period: PeriodFilter = {}) =>
+  api<OverviewStats>(`/admin/overview${qs(period)}`);
 
-export const getEngagementActivity = () =>
-  api<EngagementActivity>('/admin/engagement/activity');
+export const getEngagementSummary = (period: PeriodFilter = {}) =>
+  api<EngagementSummary>(`/admin/engagement/summary${qs(period)}`);
 
-export const getChatOverview = () =>
-  api<ChatOverview>('/admin/chat/overview');
+export const getEngagementActivity = (period: PeriodFilter = {}) =>
+  api<EngagementActivity>(`/admin/engagement/activity${qs(period)}`);
 
-export const getThreadsOverview = () =>
-  api<ThreadsOverview>('/admin/threads/overview');
+export const getChatOverview = (period: PeriodFilter = {}) =>
+  api<ChatOverview>(`/admin/chat/overview${qs(period)}`);
 
-export const getReportsOverview = () =>
-  api<ReportsOverview>('/admin/reports/overview');
+export const getThreadsOverview = (period: PeriodFilter = {}) =>
+  api<ThreadsOverview>(`/admin/threads/overview${qs(period)}`);
 
-export const getTransactionsOverview = () =>
-  api<TransactionsOverview>('/admin/transactions/overview');
+export const getReportsOverview = (period: PeriodFilter = {}) =>
+  api<ReportsOverview>(`/admin/reports/overview${qs(period)}`);
 
-export const getListingsOverview = () =>
-  api<ListingsOverview>('/admin/listings/overview');
+export const getTransactionsOverview = (period: PeriodFilter = {}) =>
+  api<TransactionsOverview>(`/admin/transactions/overview${qs(period)}`);
 
-export const getActivityOverview = () =>
-  api<ActivityOverview>('/admin/activity/overview');
+export const getListingsOverview = (period: PeriodFilter = {}) =>
+  api<ListingsOverview>(`/admin/listings/overview${qs(period)}`);
+
+export const getActivityOverview = (period: PeriodFilter = {}) =>
+  api<ActivityOverview>(`/admin/activity/overview${qs(period)}`);
 
 export const getWeeklyMetrics = (date?: string) =>
   api<WeeklyMetricsResponse>(`/admin/metrics/weekly${qs({ date })}`);

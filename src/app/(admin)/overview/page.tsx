@@ -10,9 +10,18 @@ import {
   getThreadsOverview,
   getTransactionsOverview,
 } from '@/lib/fetchers';
+import { resolvePeriodFromRecord } from '@/lib/period';
 import { OverviewTabLayout } from './OverviewTabLayout';
 
-export default async function OverviewPage() {
+export default async function OverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const rawParams = await searchParams;
+  const { from, to } = resolvePeriodFromRecord(rawParams);
+  const period = { from, to };
+
   const [
     overview,
     chatOverview,
@@ -23,14 +32,14 @@ export default async function OverviewPage() {
     listingsOverview,
     activityOverview,
   ] = await Promise.all([
-    getOverview(),
-    getChatOverview().catch(() => null),
-    getThreadsOverview().catch(() => null),
-    getEngagementSummary().catch(() => null),
-    getReportsOverview().catch(() => null),
-    getTransactionsOverview().catch(() => null),
-    getListingsOverview().catch(() => null),
-    getActivityOverview().catch(() => null),
+    getOverview(period),
+    getChatOverview(period).catch(() => null),
+    getThreadsOverview(period).catch(() => null),
+    getEngagementSummary(period).catch(() => null),
+    getReportsOverview(period).catch(() => null),
+    getTransactionsOverview(period).catch(() => null),
+    getListingsOverview(period).catch(() => null),
+    getActivityOverview(period).catch(() => null),
   ]);
 
   return (
