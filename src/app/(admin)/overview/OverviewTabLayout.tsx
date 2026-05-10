@@ -18,13 +18,18 @@ type Tab = 'overview' | 'engagement';
 type OverviewSubTab = 'listings' | 'transactions' | 'reports';
 type EngagementSubTab = 'chat' | 'thread' | 'activity';
 
+type DeltaInfo = {
+  raw: number;
+  formatted: string;
+};
+
 type MetricCard = {
   label: string;
   value: string;
   /** True for live/snapshot counts that are not period-aggregated (e.g. active listings). */
   isSnapshot?: boolean;
-  /** Formatted value from the previous period, shown as a comparison. */
-  previousValue?: string;
+  /** Delta vs previous period. */
+  delta?: DeltaInfo;
 };
 
 interface Props {
@@ -76,22 +81,22 @@ export function OverviewTabLayout({
       {
         label: 'Chat Button Clicks',
         value: chatOverview.totals.chatButtonClicks.toLocaleString(),
-        previousValue: chatPrev ? chatPrev.chatButtonClicks.toLocaleString() : undefined,
+        delta: chatPrev ? countDelta(chatOverview.totals.chatButtonClicks, chatPrev.chatButtonClicks) : undefined,
       },
       {
         label: 'Chat Started Count',
         value: chatOverview.totals.chatStartedCount.toLocaleString(),
-        previousValue: chatPrev ? chatPrev.chatStartedCount.toLocaleString() : undefined,
+        delta: chatPrev ? countDelta(chatOverview.totals.chatStartedCount, chatPrev.chatStartedCount) : undefined,
       },
       {
         label: 'Message Sent Count',
         value: chatOverview.totals.messageSentCount.toLocaleString(),
-        previousValue: chatPrev ? chatPrev.messageSentCount.toLocaleString() : undefined,
+        delta: chatPrev ? countDelta(chatOverview.totals.messageSentCount, chatPrev.messageSentCount) : undefined,
       },
       {
         label: 'Listing → Chat Start Rate',
         value: formatRate(chatOverview.totals.listingToChatStartRate),
-        previousValue: chatPrev ? formatRate(chatPrev.listingToChatStartRate) : undefined,
+        delta: chatPrev ? rateDelta(chatOverview.totals.listingToChatStartRate, chatPrev.listingToChatStartRate) : undefined,
       },
     ]
     : null;
@@ -102,17 +107,17 @@ export function OverviewTabLayout({
       {
         label: 'Thread Open Count',
         value: threadsOverview.totals.threadOpenCount.toLocaleString(),
-        previousValue: threadPrev ? threadPrev.threadOpenCount.toLocaleString() : undefined,
+        delta: threadPrev ? countDelta(threadsOverview.totals.threadOpenCount, threadPrev.threadOpenCount) : undefined,
       },
       {
         label: 'Thread Join Count',
         value: threadsOverview.totals.threadJoinCount.toLocaleString(),
-        previousValue: threadPrev ? threadPrev.threadJoinCount.toLocaleString() : undefined,
+        delta: threadPrev ? countDelta(threadsOverview.totals.threadJoinCount, threadPrev.threadJoinCount) : undefined,
       },
       {
         label: 'Thread Active Users',
         value: threadsOverview.totals.threadActiveUsers.toLocaleString(),
-        previousValue: threadPrev ? threadPrev.threadActiveUsers.toLocaleString() : undefined,
+        delta: threadPrev ? countDelta(threadsOverview.totals.threadActiveUsers, threadPrev.threadActiveUsers) : undefined,
       },
     ]
     : null;
@@ -136,7 +141,7 @@ export function OverviewTabLayout({
         {
           label: 'Sign Up Count',
           value: activityOverview ? activityOverview.totals.signUpCount.toLocaleString() : 'Not wired',
-          previousValue: activityPrev ? activityPrev.signUpCount.toLocaleString() : undefined,
+          delta: activityPrev && activityOverview ? countDelta(activityOverview.totals.signUpCount, activityPrev.signUpCount) : undefined,
         },
         {
           label: 'Active Users',
@@ -330,7 +335,7 @@ function MetricCardGrid({
 }) {
   return (
     <div className={`grid grid-cols-2 gap-4 ${columnsClassName}`}>
-      {cards.map(({ label, value, isSnapshot, previousValue }) => (
+      {cards.map(({ label, value, isSnapshot, delta }) => (
         <div
           key={label}
           className="rounded-2xl border border-ink-100 bg-white p-5 flex flex-col gap-1.5 shadow-sm"
@@ -344,9 +349,17 @@ function MetricCardGrid({
               Live count
             </span>
           )}
-          {previousValue && !isSnapshot && (
-            <span className="text-xs text-ink-400">
-              prev period: {previousValue}
+          {delta && !isSnapshot && (
+            <span
+              className={`text-xs ${
+                delta.raw > 0
+                  ? 'text-green-600'
+                  : delta.raw < 0
+                    ? 'text-red-600'
+                    : 'text-ink-400'
+              }`}
+            >
+              vs prev. period {delta.formatted}
             </span>
           )}
         </div>
@@ -379,6 +392,32 @@ function toSafeNumber(value: number | null | undefined) {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
+function countDelta(current: number, previous: number): DeltaInfo {
+  const raw = current - previous;
+  const sign = raw > 0 ? '+' : '';
+  return { raw, formatted: `${sign}${raw.toLocaleString()}` };
+}
+
+function moneyDelta(current: number, previous: number): DeltaInfo {
+  const raw = current - previous;
+  const displayed = Math.round(Math.abs(raw));
+  const formatted = new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    maximumFractionDigits: 0,
+  }).format(displayed);
+  if (displayed === 0) return { raw: 0, formatted };
+  return { raw: raw > 0 ? displayed : -displayed, formatted: raw > 0 ? `+${formatted}` : `-${formatted}` };
+}
+
+function rateDelta(current: number, previous: number): DeltaInfo {
+  const raw = (current - previous) * 100;
+  const displayed = Math.abs(raw) < 0.05 ? 0 : Math.round(raw * 10) / 10;
+  if (displayed === 0) return { raw: 0, formatted: '0pp' };
+  const sign = displayed > 0 ? '+' : '';
+  return { raw: displayed, formatted: `${sign}${displayed.toFixed(1)}pp` };
+}
+
 function OverviewError({ label }: { label: string }) {
   return (
     <div className="rounded-2xl border border-red-100 bg-red-50 p-5 text-sm text-red-700">
@@ -407,14 +446,14 @@ function ListingsOverviewPanel({
       value: listingsOverview
         ? listingsOverview.totals.listingPublishedCount.toLocaleString()
         : 'Not wired',
-      previousValue: prev ? prev.listingPublishedCount.toLocaleString() : undefined,
+      delta: prev ? countDelta(listingsOverview!.totals.listingPublishedCount, prev.listingPublishedCount) : undefined,
     },
     {
       label: 'First Listing Rate',
       value: listingsOverview
         ? formatRate(listingsOverview.totals.firstListingRate)
         : 'Not wired',
-      previousValue: prev ? formatRate(prev.firstListingRate) : undefined,
+      delta: prev ? rateDelta(listingsOverview!.totals.firstListingRate, prev.firstListingRate) : undefined,
     },
     {
       label: 'Listing Detail Views',
@@ -430,21 +469,21 @@ function ListingsOverviewPanel({
       value: listingsOverview
         ? listingsOverview.totals.listingStartedCount.toLocaleString()
         : 'Not wired',
-      previousValue: prev ? prev.listingStartedCount.toLocaleString() : undefined,
+      delta: prev ? countDelta(listingsOverview!.totals.listingStartedCount, prev.listingStartedCount) : undefined,
     },
     {
       label: 'Listing Created Count',
       value: listingsOverview
         ? listingsOverview.totals.listingCreateClickedCount.toLocaleString()
         : 'Not wired',
-      previousValue: prev ? prev.listingCreateClickedCount.toLocaleString() : undefined,
+      delta: prev ? countDelta(listingsOverview!.totals.listingCreateClickedCount, prev.listingCreateClickedCount) : undefined,
     },
     {
       label: 'Repeat Listing User Count',
       value: listingsOverview
         ? listingsOverview.totals.repeatListingUserCount.toLocaleString()
         : 'Not wired',
-      previousValue: prev ? prev.repeatListingUserCount.toLocaleString() : undefined,
+      delta: prev ? countDelta(listingsOverview!.totals.repeatListingUserCount, prev.repeatListingUserCount) : undefined,
     },
   ];
 
@@ -500,21 +539,21 @@ function TransactionsOverviewPanel({
       value: transactionsOverview
         ? formatSafeCount(transactionsOverview.totals.confirmedTransactionCount)
         : 'Not wired',
-      previousValue: prev ? formatSafeCount(prev.confirmedTransactionCount) : undefined,
+      delta: prev ? countDelta(toSafeNumber(transactionsOverview!.totals.confirmedTransactionCount), toSafeNumber(prev.confirmedTransactionCount)) : undefined,
     },
     {
       label: 'Confirmed Transaction Volume',
       value: transactionsOverview
         ? formatSafeMoney(transactionsOverview.totals.confirmedTransactionVolume)
         : 'Not wired',
-      previousValue: prev ? formatSafeMoney(prev.confirmedTransactionVolume) : undefined,
+      delta: prev ? moneyDelta(toSafeNumber(transactionsOverview!.totals.confirmedTransactionVolume), toSafeNumber(prev.confirmedTransactionVolume)) : undefined,
     },
     {
       label: 'GMV',
       value: transactionsOverview
         ? formatSafeMoney(transactionsOverview.totals.gmv)
         : 'Not wired',
-      previousValue: prev ? formatSafeMoney(prev.gmv) : undefined,
+      delta: prev ? moneyDelta(toSafeNumber(transactionsOverview!.totals.gmv), toSafeNumber(prev.gmv)) : undefined,
     },
     { label: 'Sponsored Revenue', value: 'Not wired' },
   ];
@@ -574,14 +613,14 @@ function ReportsOverviewPanel({
       value: reportsOverview
         ? reportsOverview.totals.reportsCreatedCount.toLocaleString()
         : 'Not wired',
-      previousValue: prev ? prev.reportsCreatedCount.toLocaleString() : undefined,
+      delta: prev ? countDelta(reportsOverview!.totals.reportsCreatedCount, prev.reportsCreatedCount) : undefined,
     },
     {
       label: 'Resolved Reports Count',
       value: reportsOverview
         ? reportsOverview.totals.resolvedReportsCount.toLocaleString()
         : 'Not wired',
-      previousValue: prev ? prev.resolvedReportsCount.toLocaleString() : undefined,
+      delta: prev ? countDelta(reportsOverview!.totals.resolvedReportsCount, prev.resolvedReportsCount) : undefined,
     },
     { label: 'Pending Reports Count', value: 'Not wired' },
   ];
