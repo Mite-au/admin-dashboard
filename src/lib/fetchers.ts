@@ -1,6 +1,7 @@
 import { api } from './api';
 import type {
   ActivityOverview,
+  AdminActivityOverviewResponse,
   AdminPost,
   AdminReport,
   AdminReportStatus,
@@ -120,6 +121,9 @@ export const getActivityOverview = (period: PeriodFilter = {}) =>
 
 export const getWeeklyMetrics = (date?: string) =>
   api<WeeklyMetricsResponse>(`/admin/metrics/weekly${qs({ date })}`);
+
+export const getAdminActivity = (limit?: number) =>
+  api<AdminActivityOverviewResponse>(`/admin/admin-activity${qs({ limit })}`);
 
 export const getUsers = (filters: UserFilters = {}) =>
   api<Paged<AdminUser>>(`/admin/users${qs({ pageSize: 15, ...filters })}`);

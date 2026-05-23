@@ -339,3 +339,34 @@ export interface WeeklyMetricsResponse {
   week: WeeklyMetricsWeekWindow;
   coreKpis: Record<WeeklyCoreKpiKey, WeeklyMetricValue>;
 }
+
+// ── Admin activity (dashboard usage) ────────────────────────────────────
+
+export interface AdminActivityWindow {
+  logins: number;
+  uniqueAdmins: number;
+}
+
+export interface AdminActivityPerAdmin {
+  adminUserId: string;
+  email: string | null;
+  totalLogins: number;
+  loginsLast30d: number;
+  lastLoginAt: string | null;
+}
+
+export interface AdminLoginRow {
+  id: string;
+  adminUserId: string;
+  email: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface AdminActivityOverviewResponse {
+  last7d: AdminActivityWindow;
+  last30d: AdminActivityWindow;
+  perAdmin: AdminActivityPerAdmin[];
+  recentLogins: AdminLoginRow[];
+}
