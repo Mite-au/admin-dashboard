@@ -1,10 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 export function LoginForm() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,8 +22,11 @@ export function LoginForm() {
       setLoading(false);
       return;
     }
-    router.push('/users');
-    router.refresh();
+    // Full-page navigation so the browser does a fresh request with the
+    // newly-set admin_token cookie. Using router.push + router.refresh here
+    // races the client cache against middleware and can hang on the first
+    // login until the user manually refreshes.
+    window.location.assign('/users');
   }
 
   return (
