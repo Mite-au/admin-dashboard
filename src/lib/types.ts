@@ -340,33 +340,39 @@ export interface WeeklyMetricsResponse {
   coreKpis: Record<WeeklyCoreKpiKey, WeeklyMetricValue>;
 }
 
-// ── Admin activity (dashboard usage) ────────────────────────────────────
+// ── User login activity ─────────────────────────────────────────────────
 
-export interface AdminActivityWindow {
+export type UserLoginMethod = 'email' | 'phone' | 'google' | 'unknown';
+
+export interface DailyLoginPoint {
+  date: string;
   logins: number;
-  uniqueAdmins: number;
+  uniqueUsers: number;
 }
 
-export interface AdminActivityPerAdmin {
-  adminUserId: string;
-  email: string | null;
-  totalLogins: number;
-  loginsLast30d: number;
-  lastLoginAt: string | null;
+export interface LoginMethodBreakdown {
+  email: number;
+  phone: number;
+  google: number;
+  unknown: number;
 }
 
-export interface AdminLoginRow {
-  id: string;
-  adminUserId: string;
+export interface RecentUserLogin {
+  userId: string;
   email: string | null;
-  ipAddress: string | null;
-  userAgent: string | null;
+  phone: string | null;
+  method: UserLoginMethod;
+  isSignUp: boolean;
   createdAt: string;
 }
 
-export interface AdminActivityOverviewResponse {
-  last7d: AdminActivityWindow;
-  last30d: AdminActivityWindow;
-  perAdmin: AdminActivityPerAdmin[];
-  recentLogins: AdminLoginRow[];
+export interface UserLoginsResponse {
+  dau: number;
+  wau: number;
+  mau: number;
+  loginsLast7d: number;
+  loginsLast30d: number;
+  methodBreakdown: LoginMethodBreakdown;
+  daily: DailyLoginPoint[];
+  recentLogins: RecentUserLogin[];
 }

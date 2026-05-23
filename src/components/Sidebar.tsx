@@ -13,12 +13,13 @@ import {
   BellRing,
   CalendarCheck,
   Megaphone,
-  Activity,
+  LogIn,
 } from 'lucide-react';
 
 const nav = [
   { href: '/overview', label: 'Overview', icon: LayoutDashboard },
   { href: '/weekly-review', label: 'Weekly Review', icon: CalendarCheck },
+  { href: '/user-logins', label: 'User Logins', icon: LogIn },
   { href: '/users', label: 'User', icon: User },
   { href: '/listings', label: 'Listing', icon: List },
   { href: '/transactions', label: 'Transactions', icon: HandCoins },
@@ -26,7 +27,6 @@ const nav = [
   { href: '/trust-safety', label: 'Trust & Safety', icon: ShieldCheck },
   { href: '/notification', label: 'Notification', icon: BellRing },
   { href: '/ads', label: 'Ads', icon: Megaphone },
-  { href: '/admin-activity', label: 'Admin Activity', icon: Activity },
 ];
 
 export function Sidebar() {
