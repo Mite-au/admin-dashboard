@@ -7,6 +7,7 @@ import type {
   AdminReportTargetType,
   AdminThreadDetail,
   AdminThreadListItem,
+  AdminThreadRequest,
   AdminTransaction,
   AdminUserConversation,
   AdminUserPurchase,
@@ -83,8 +84,15 @@ export type ThreadFilters = {
   pageSize?: number;
   name?: string;
   type?: string;
+  regionCode?: string;
+  interestKey?: string;
+  status?: string;
   minMembers?: number;
   memberId?: string;
+};
+
+export type ThreadRequestFilters = {
+  status?: string;
 };
 
 export type PeriodFilter = {
@@ -154,6 +162,9 @@ export const getThreads = (filters: ThreadFilters = {}) =>
   api<Paged<AdminThreadListItem>>(`/admin/threads${qs({ pageSize: 15, ...filters })}`);
 
 export const getThread = (id: string) => api<AdminThreadDetail>(`/admin/threads/${id}`);
+
+export const getThreadRequests = (filters: ThreadRequestFilters = {}) =>
+  api<AdminThreadRequest[]>(`/admin/thread-requests${qs(filters)}`);
 
 export const getReports = (filters: ReportFilters = {}) =>
   api<Paged<AdminReport>>(`/admin/reports${qs({ pageSize: 15, ...filters })}`);

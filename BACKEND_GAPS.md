@@ -187,9 +187,9 @@ this table.
 - [ ] `PATCH /admin/threads/:id/status` — body `{ status:
   thread_admin_status }`.
 - [ ] Fix existing `listThreads` to return the real `admin_status` instead
-  of the hardcoded `'active'`, and to pass through `type` (schema enum is
-  `SUBURB | INTEREST | SUBURB_INTEREST`; AdminService already normalises
-  for the frontend).
+  of the hardcoded `'active'`, and include `regionCode`, `suburbCode`, and
+  `interestKey` so the dashboard can distinguish canonical regional rows
+  from legacy suburb/global/combo history.
 
 ### Consumer-frontend impact
 

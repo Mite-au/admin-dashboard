@@ -6,8 +6,23 @@ import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
 import { formatDate, formatNumber } from '@/lib/format';
+import {
+  formatThreadType,
+  getThreadInterestKey,
+  getThreadModelLabel,
+  getThreadRegionCode,
+  splitThreadName,
+} from '@/lib/threadModel';
 import type { AdminThreadListItem, Paged } from '@/lib/types';
 import type { ThreadFilters } from '@/lib/fetchers';
+
+const THREAD_STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'active', label: 'Active' },
+  { value: 'flagged', label: 'Flagged' },
+  { value: 'hidden', label: 'Hidden' },
+  { value: 'archived', label: 'Archived' },
+] as const;
 
 export function ThreadsClient({
   data,
@@ -22,6 +37,9 @@ export function ThreadsClient({
 
   const [name, setName] = useState(filters.name ?? '');
   const [type, setType] = useState(filters.type ?? '');
+  const [regionCode, setRegionCode] = useState(filters.regionCode ?? '');
+  const [interestKey, setInterestKey] = useState(filters.interestKey ?? '');
+  const [status, setStatus] = useState(filters.status ?? '');
   const [minMembers, setMinMembers] = useState(
     filters.minMembers !== undefined ? String(filters.minMembers) : '',
   );
@@ -32,6 +50,9 @@ export function ThreadsClient({
     const final: Record<string, string | number | undefined> = {
       name,
       type,
+      regionCode,
+      interestKey,
+      status,
       minMembers: minMembers === '' ? undefined : Number(minMembers),
       memberId,
       page: filters.page,
@@ -71,8 +92,37 @@ export function ThreadsClient({
               onChange={(e) => setType(e.target.value)}
             >
               <option value="">All types</option>
-              <option value="suburb">Suburb</option>
-              <option value="interest">Interest</option>
+              <option value="suburb">Suburb / Regional General</option>
+              <option value="interest">Interest / Regional Interest</option>
+            </select>
+          </SearchField>
+          <SearchField label="Region code">
+            <input
+              className="pill-input"
+              placeholder="eastern_suburbs"
+              value={regionCode}
+              onChange={(e) => setRegionCode(e.target.value)}
+            />
+          </SearchField>
+          <SearchField label="Interest key">
+            <input
+              className="pill-input"
+              placeholder="basketball"
+              value={interestKey}
+              onChange={(e) => setInterestKey(e.target.value)}
+            />
+          </SearchField>
+          <SearchField label="Admin status">
+            <select
+              className="pill-select"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              {THREAD_STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </SearchField>
           <SearchField label="Min members">
@@ -95,47 +145,71 @@ export function ThreadsClient({
         </SearchCard>
       </form>
 
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th className="w-10"></th>
-            <th>Name</th>
-            <th>Type</th>
-            <th className="text-right">Members</th>
-            <th className="text-right">Messages</th>
-            <th>Created</th>
-            <th className="text-right pr-6">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((t) => (
-            <tr
-              key={t.id}
-              className="cursor-pointer"
-              onClick={() => router.push(`/threads/${t.id}`)}
-            >
-              <td onClick={(e) => e.stopPropagation()}>
-                <input type="checkbox" className="h-4 w-4 rounded border-ink-300" />
-              </td>
-              <td className="font-medium">{t.name}</td>
-              <td className="text-ink-700 capitalize">{t.type}</td>
-              <td className="text-right">{formatNumber(t.memberCount)}</td>
-              <td className="text-right">{formatNumber(t.messageCount)}</td>
-              <td className="text-ink-700">{formatDate(t.createdAt)}</td>
-              <td className="text-right pr-6">
-                <StatusBadge status={t.status} />
-              </td>
-            </tr>
-          ))}
-          {rows.length === 0 && (
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
             <tr>
-              <td colSpan={7} className="text-center text-ink-500 py-10">
-                No threads match your filters.
-              </td>
+              <th className="w-10"></th>
+              <th>Name</th>
+              <th>Model</th>
+              <th>Raw type</th>
+              <th>Region</th>
+              <th>Interest</th>
+              <th className="text-right">Members</th>
+              <th className="text-right">Messages</th>
+              <th>Created</th>
+              <th className="text-right pr-6">Status</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((t) => (
+              <tr
+                key={t.id}
+                className="cursor-pointer"
+                onClick={() => router.push(`/threads/${t.id}`)}
+              >
+                <td onClick={(e) => e.stopPropagation()}>
+                  <input type="checkbox" className="h-4 w-4 rounded border-ink-300" />
+                </td>
+                <td className="font-medium">
+                  {(() => {
+                    const { topicName, regionName } = splitThreadName(t.name);
+                    return (
+                      <div className="flex flex-col">
+                        <span>{topicName}</span>
+                        {regionName && (
+                          <span className="text-xs font-normal text-ink-500">
+                            {regionName}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </td>
+                <td>
+                  <ThreadModelBadge thread={t} />
+                </td>
+                <td className="text-ink-700">{formatThreadType(t.type)}</td>
+                <td className="text-ink-700">{getThreadRegionCode(t) ?? '—'}</td>
+                <td className="text-ink-700">{getThreadInterestKey(t) ?? '—'}</td>
+                <td className="text-right">{formatNumber(t.memberCount)}</td>
+                <td className="text-right">{formatNumber(t.messageCount)}</td>
+                <td className="text-ink-700">{formatDate(t.createdAt)}</td>
+                <td className="text-right pr-6">
+                  <StatusBadge status={t.status} />
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={10} className="text-center text-ink-500 py-10">
+                  No threads match your filters.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <Pagination
         page={data.page}
@@ -143,5 +217,21 @@ export function ThreadsClient({
         onChange={(p) => pushFilters({ page: p })}
       />
     </div>
+  );
+}
+
+function ThreadModelBadge({ thread }: { thread: AdminThreadListItem }) {
+  const label = getThreadModelLabel(thread);
+  const tone =
+    label === 'Regional General'
+      ? 'bg-blue-50 text-blue-700'
+      : label === 'Regional Interest'
+        ? 'bg-green-50 text-success'
+        : 'bg-ink-100 text-ink-700';
+
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${tone}`}>
+      {label}
+    </span>
   );
 }

@@ -23,6 +23,9 @@ export default async function ThreadsPage({ searchParams }: { searchParams: Sear
     page: Number(first(sp.page) ?? 1),
     name: first(sp.name),
     type: first(sp.type),
+    regionCode: first(sp.regionCode),
+    interestKey: first(sp.interestKey),
+    status: first(sp.status),
     minMembers: num(sp.minMembers),
     memberId: first(sp.memberId),
   };

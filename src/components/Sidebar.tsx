@@ -14,6 +14,7 @@ import {
   CalendarCheck,
   Megaphone,
   LogIn,
+  MessageSquarePlus,
 } from 'lucide-react';
 
 const nav = [
@@ -24,6 +25,7 @@ const nav = [
   { href: '/listings', label: 'Listing', icon: List },
   { href: '/transactions', label: 'Transactions', icon: HandCoins },
   { href: '/threads', label: 'Thread', icon: MessagesSquare },
+  { href: '/thread-requests', label: 'Thread Requests', icon: MessageSquarePlus },
   { href: '/trust-safety', label: 'Trust & Safety', icon: ShieldCheck },
   { href: '/notification', label: 'Notification', icon: BellRing },
   { href: '/ads', label: 'Ads', icon: Megaphone },

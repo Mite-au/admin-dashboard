@@ -1,7 +1,14 @@
 // Mirror the Prisma schema for types used across the dashboard.
 export type PostStatus = 'draft' | 'published' | 'sold' | 'paused' | 'archived' | 'deleted';
 export type ThreadAdminStatus = 'active' | 'flagged' | 'archived' | 'hidden';
-export type ThreadType = 'suburb' | 'interest';
+export type ThreadType =
+  | 'suburb'
+  | 'interest'
+  | 'suburb_interest'
+  | 'SUBURB'
+  | 'INTEREST'
+  | 'SUBURB_INTEREST';
+export type ThreadRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type AdminReportStatus = 'open' | 'resolved';
 export type AdminReportTargetType = 'post' | 'user';
 /**
@@ -92,6 +99,12 @@ export interface AdminThreadListItem {
   id: string;
   name: string;
   type: ThreadType;
+  regionCode?: string | null;
+  region_code?: string | null;
+  suburbCode?: string | null;
+  suburb_code?: string | null;
+  interestKey?: string | null;
+  interest_key?: string | null;
   memberCount: number;
   messageCount: number;
   createdAt: string;
@@ -103,15 +116,65 @@ export interface AdminThreadDetail extends AdminThreadListItem {
   description?: string | null;
   slug?: string | null;
   lastActiveAt?: string | null;
+  coverImage?: string | null;
+  cover_image?: string | null;
 }
 
 export interface AdminUserThread {
   id: string;
   name: string;
   type: ThreadType;
+  regionCode?: string | null;
+  region_code?: string | null;
+  suburbCode?: string | null;
+  suburb_code?: string | null;
+  interestKey?: string | null;
+  interest_key?: string | null;
   memberCount: number;
   lastActiveAt: string | null;
   createdAt: string;
+}
+
+export interface ConsumerThreadDto {
+  id: string;
+  type: string;
+  regionCode: string | null;
+  interestKey: string | null;
+  name: string;
+  slug: string;
+  description: string | null;
+  iconUrl: string | null;
+  isJoined: boolean;
+  createdAt: string;
+  memberCount: number;
+  lastActiveAt: string | null;
+  coverImage: string | null;
+}
+
+export interface AdminThreadRequest {
+  id: string;
+  title: string;
+  reason: string;
+  regionCode: string | null;
+  suburbCode?: string | null;
+  interestKey: string | null;
+  status: ThreadRequestStatus;
+  createdAt: string;
+  reviewedAt?: string | null;
+  reviewNote?: string | null;
+  requester: {
+    id: string;
+    email: string | null;
+    displayName: string | null;
+  };
+}
+
+export interface AdminThreadRequestReviewResult {
+  id: string;
+  status: ThreadRequestStatus;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  createdThreadIds?: string[];
 }
 
 export interface AdminUserConversationPartner {

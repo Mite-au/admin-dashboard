@@ -8,6 +8,14 @@ import { DetailTabs } from '@/components/DetailTabs';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Pagination } from '@/components/Pagination';
 import { formatDate, formatNumber } from '@/lib/format';
+import {
+  formatThreadType,
+  getThreadInterestKey,
+  getThreadModelLabel,
+  getThreadRegionCode,
+  getThreadSuburbCode,
+  splitThreadName,
+} from '@/lib/threadModel';
 import { updateThreadStatus } from '@/lib/actions';
 import type { AdminThreadDetail, ThreadAdminStatus } from '@/lib/types';
 
@@ -28,21 +36,29 @@ function isMutableThreadStatus(value: string): value is MutableThreadStatus {
 
 export function ThreadDetailClient({ thread }: { thread: AdminThreadDetail }) {
   const [tab, setTab] = useState<TabKey>('messages');
+  const regionCode = getThreadRegionCode(thread);
+  const suburbCode = getThreadSuburbCode(thread);
+  const interestKey = getThreadInterestKey(thread);
+  const { topicName, regionName } = splitThreadName(thread.name);
+  const coverImage = thread.coverImage ?? thread.cover_image ?? null;
 
   return (
     <div className="px-8 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
       <section className="card-inner lg:col-span-5 p-6 space-y-6">
         <div className="space-y-1">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-500">Thread</p>
-          <h2 className="text-lg font-semibold text-ink-900">{thread.name}</h2>
+          <h2 className="text-lg font-semibold text-ink-900">{topicName}</h2>
+          {regionName && <p className="text-sm text-ink-500">{regionName}</p>}
         </div>
 
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
           <MetaField label="Thread ID" value={thread.id} />
           <MetaField label="Name" value={thread.name} />
-          <MetaField label="Type">
-            <span className="capitalize">{thread.type}</span>
-          </MetaField>
+          <MetaField label="Model" value={getThreadModelLabel(thread)} />
+          <MetaField label="Raw type" value={formatThreadType(thread.type)} />
+          <MetaField label="Region code" value={regionCode ?? '—'} />
+          <MetaField label="Interest key" value={interestKey ?? '—'} />
+          {suburbCode && <MetaField label="Legacy suburb code" value={suburbCode} />}
           <MetaField label="Admin status">
             <ThreadStatusDropdown threadId={thread.id} value={thread.status} />
           </MetaField>
@@ -53,6 +69,7 @@ export function ThreadDetailClient({ thread }: { thread: AdminThreadDetail }) {
           <MetaField label="Message count" value={formatNumber(thread.messageCount)} />
           <MetaField label="Created" value={formatDate(thread.createdAt)} />
           {thread.slug && <MetaField label="Slug" value={thread.slug} />}
+          {coverImage && <MetaField label="Cover image" value={coverImage} />}
           {thread.lastActiveAt && (
             <MetaField label="Last active" value={formatDate(thread.lastActiveAt)} />
           )}
@@ -71,7 +88,8 @@ export function ThreadDetailClient({ thread }: { thread: AdminThreadDetail }) {
           <p className="text-sm font-medium text-ink-900">Thread summary</p>
           <p className="text-sm text-ink-700">
             {formatNumber(thread.memberCount)} participants and {formatNumber(thread.messageCount)}{' '}
-            messages are currently associated with this thread.
+            messages are currently associated with this {getThreadModelLabel(thread).toLowerCase()}{' '}
+            thread{regionCode ? ` in ${regionCode}` : ''}.
           </p>
           <Link href="/threads" className="btn btn-pill-dark px-5 py-2 justify-center">
             Back to threads

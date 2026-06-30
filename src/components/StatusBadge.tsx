@@ -34,6 +34,10 @@ const map: Record<string, string> = {
   in_review: 'pill-warning',
   resolved: 'pill-success',
 
+  // Thread request statuses
+  approved: 'pill-success',
+  rejected: 'pill-danger',
+
   // Thread admin statuses
   flagged: 'pill-warning',
   hidden: 'pill-neutral',
@@ -45,9 +49,10 @@ const map: Record<string, string> = {
 export function StatusBadge({ status }: { status: string }) {
   const key = status.toLowerCase().replace('-', ' ');
   const cls = map[key] ?? map[status.toLowerCase()] ?? 'pill-neutral';
+  const label = status.replace(/[_-]/g, ' ').toLowerCase();
   return (
     <span className={clsx('pill-status capitalize', cls)}>
-      {status.replace('_', ' ').replace('-', ' ')}
+      {label}
     </span>
   );
 }
