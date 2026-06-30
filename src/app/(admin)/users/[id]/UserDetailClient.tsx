@@ -11,10 +11,12 @@ import {
   Clock3,
   Download,
   Hash,
+  MapPin,
   MessageSquareText,
   MoreVertical,
   Package,
   RotateCcw,
+  Tags,
   Trash2,
   Users,
 } from 'lucide-react';
@@ -30,6 +32,11 @@ import {
   formatNumber,
   isImageSrc,
 } from '@/lib/format';
+import {
+  getThreadInterestKey,
+  getThreadModelLabel,
+  getThreadRegionCode,
+} from '@/lib/threadModel';
 import { updateUserStatus, updateSuburbVerification, resetUserPassword, resetUserAvatar } from '@/lib/actions';
 import type { AdminPost, AdminReport, AdminUser, AdminUserConversation, AdminUserPurchase, AdminUserThread, Paged } from '@/lib/types';
 
@@ -628,10 +635,12 @@ function ThreadsTab({ threads }: { threads: AdminUserThread[] }) {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="truncate text-sm font-semibold text-ink-900">{thread.name}</p>
-                  <ThreadTypeBadge type={thread.type} />
+                  <ThreadTypeBadge thread={thread} />
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-ink-500">
                   <InlineMeta icon={Hash} label={`Thread ID ${thread.id}`} />
+                  <InlineMeta icon={MapPin} label={`Region ${getThreadRegionCode(thread) ?? '—'}`} />
+                  <InlineMeta icon={Tags} label={`Interest ${getThreadInterestKey(thread) ?? '—'}`} />
                   <InlineMeta icon={Users} label={`${formatNumber(thread.memberCount)} members`} />
                 </div>
               </div>
@@ -754,17 +763,18 @@ function ActivityTabHeader({
   );
 }
 
-function ThreadTypeBadge({ type }: { type: AdminUserThread['type'] }) {
+function ThreadTypeBadge({ thread }: { thread: AdminUserThread }) {
+  const label = getThreadModelLabel(thread);
+  const tone =
+    label === 'Regional General'
+      ? 'bg-blue-50 text-blue-700'
+      : label === 'Regional Interest'
+        ? 'bg-green-50 text-success'
+        : 'bg-ink-100 text-ink-700';
+
   return (
-    <span
-      className={
-        'rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ' +
-        (type === 'suburb'
-          ? 'bg-blue-50 text-blue-700'
-          : 'bg-amber-50 text-warning')
-      }
-    >
-      {type}
+    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>
+      {label}
     </span>
   );
 }
