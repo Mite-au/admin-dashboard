@@ -16,10 +16,12 @@ import type {
   ChatOverview,
   EngagementActivity,
   EngagementSummary,
+  FunnelResponse,
   ListingsOverview,
   OverviewStats,
   Paged,
   ReportsOverview,
+  SearchGapsResponse,
   ThreadsOverview,
   TransactionsOverview,
   UserLoginsResponse,
@@ -132,6 +134,12 @@ export const getWeeklyMetrics = (date?: string) =>
 
 export const getUserLogins = (limit?: number) =>
   api<UserLoginsResponse>(`/admin/user-logins${qs({ limit })}`);
+
+export const getFunnel = (period: PeriodFilter = {}) =>
+  api<FunnelResponse>(`/admin/funnel${qs(period)}`);
+
+export const getSearchGaps = (period: PeriodFilter = {}, limit?: number) =>
+  api<SearchGapsResponse>(`/admin/search-gaps${qs({ ...period, limit })}`);
 
 export const getUsers = (filters: UserFilters = {}) =>
   api<Paged<AdminUser>>(`/admin/users${qs({ pageSize: 15, ...filters })}`);

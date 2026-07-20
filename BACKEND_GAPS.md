@@ -234,6 +234,56 @@ Nothing to action right now for these; documented so we don't forget.
 
 ---
 
+## 8. Analytics event log (`events` table)
+
+Append-only business-event log written by `EventsService.track()` (global
+NestJS module). Every write is fire-and-forget inside `try/catch` — analytics
+failures never affect the main request. Properties are JSON with snake_case
+keys and stringified IDs.
+
+### Event catalogue
+
+Funnel: signup → browse/search → chat → offer → appointment → trade →
+review. Each stage now emits events, so conversion between any two stages is
+measurable from this one table.
+
+| Event | Fired when | Key properties | Business question |
+| --- | --- | --- | --- |
+| `sign_up_completed` | account created | — | acquisition volume |
+| `email_verified` / `phone_verified` | verification passes | — | activation rate |
+| `user_login` | token issued | — | DAU/WAU, retention |
+| `listing_started` / `listing_published` | seller flow | `listing_id` | supply funnel |
+| `listing_marked_sold` | offer accepted marks post sold | `listing_id, offer_id` | sell-through rate |
+| `listing_saved` **(new)** | user saves a listing | `listing_id` | demand signal per listing/category |
+| `search_performed` **(new)** | first page of a logged-in text search | `query, result_count, region, category_ids` | demand intent; `result_count = 0` rows = supply gaps to recruit sellers for |
+| `listing_reported` **(new)** | post report filed | `listing_id, report_id, reason, seller_id` | trust & safety load, bad-actor sellers |
+| `chat_started` / `chat_button_clicked` | buyer opens conversation | `listing_id` | browse→contact conversion |
+| `offer_made` **(new)** | offer created | `offer_id, listing_id, amount_cents, currency, direction` | contact→offer conversion, price discovery |
+| `offer_accepted` **(new)** | offer accepted | `offer_id, listing_id, seller_id, amount_cents` | offer→deal conversion, GMV at agreement |
+| `offer_declined` / `offer_withdrawn` **(new)** | pending offer terminated | `offer_id, listing_id, amount_cents` | negotiation failure rate + why deals die |
+| `appointment_proposed` **(new)** | meetup proposed | `appointment_id, conversation_id, starts_at, has_location` | deal→meetup intent |
+| `appointment_accepted` **(new)** | other party accepts | `appointment_id, starts_at` | meetup confirmation rate |
+| `appointment_cancelled` **(new)** | meetup cancelled | `appointment_id, previous_status, cancelled_by_creator` | flake rate, who cancels |
+| `trade_completed` **(new)** | BOTH parties confirm completion | `appointment_id, conversation_id, confirmed_by_role` | true end-to-end conversion — the number that matters |
+| `review_submitted` **(new)** | transaction review created | `review_id, appointment_id, listing_id, reviewee_id, rating, has_body` | marketplace quality, NPS proxy |
+| `account_deletion_requested` **(new)** | deletion scheduled | `reason, has_other_text, purge_after` | churn volume + stated churn reasons |
+| `thread_open` / `thread_join` | community threads | `thread_id` | community engagement |
+
+### Notes
+
+- `search_performed` is capped to the first page (`cursor` absent) and
+  logged-in users only, so pagination doesn't duplicate events. Query text is
+  truncated to 200 chars.
+- `trade_completed` fires exactly once per appointment (on the second
+  confirmation) — use it, not `listing_marked_sold`, for settled-trade counts;
+  `listing_marked_sold` is agreement-time, `trade_completed` is completion-time.
+- `account_deletion_requested` fires only when scheduling succeeds (idempotent
+  re-requests emit nothing).
+- Future admin endpoints (funnel page, zero-result search report, churn-reason
+  breakdown) can be built entirely on `events` — no further schema work needed.
+
+---
+
 ## Non-breaking-changes checklist (consumer frontend)
 
 Everything above is safe for `miteApp/frontend` provided:
