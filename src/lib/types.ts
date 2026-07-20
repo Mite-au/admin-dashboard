@@ -439,3 +439,60 @@ export interface UserLoginsResponse {
   daily: DailyLoginPoint[];
   recentLogins: RecentUserLogin[];
 }
+
+// ── Funnel ──────────────────────────────────────────────────────────────
+
+export type FunnelStageKey =
+  | 'searches'
+  | 'chatsStarted'
+  | 'offersMade'
+  | 'offersAccepted'
+  | 'tradesCompleted';
+
+export interface FunnelStage {
+  key: FunnelStageKey;
+  label: string;
+  count: number;
+  prevCount: number;
+  /** count / previous-stage count, 0–1. Null for the first stage. */
+  conversionFromPrev: number | null;
+}
+
+export interface FunnelResponse {
+  since: string;
+  until: string;
+  stages: FunnelStage[];
+  searchToTradeRate: number;
+}
+
+// ── Search gaps ─────────────────────────────────────────────────────────
+
+export interface SearchGapTotals {
+  searches: number;
+  zeroResultSearches: number;
+  zeroResultRate: number;
+  distinctQueries: number;
+}
+
+export interface SearchGapRow {
+  query: string;
+  searches: number;
+  zeroResults: number;
+  zeroResultRate: number;
+  lastSearchedAt: string;
+}
+
+export interface TopQueryRow {
+  query: string;
+  searches: number;
+  avgResults: number;
+}
+
+export interface SearchGapsResponse {
+  since: string;
+  until: string;
+  totals: SearchGapTotals;
+  previousTotals: SearchGapTotals;
+  gaps: SearchGapRow[];
+  topQueries: TopQueryRow[];
+}

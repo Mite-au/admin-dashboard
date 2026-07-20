@@ -15,11 +15,15 @@ import {
   Megaphone,
   LogIn,
   MessageSquarePlus,
+  TrendingUp,
+  SearchX,
 } from 'lucide-react';
 
 const nav = [
   { href: '/overview', label: 'Overview', icon: LayoutDashboard },
   { href: '/weekly-review', label: 'Weekly Review', icon: CalendarCheck },
+  { href: '/funnel', label: 'Funnel', icon: TrendingUp },
+  { href: '/search-gaps', label: 'Search Gaps', icon: SearchX },
   { href: '/user-logins', label: 'User Logins', icon: LogIn },
   { href: '/users', label: 'User', icon: User },
   { href: '/listings', label: 'Listing', icon: List },
