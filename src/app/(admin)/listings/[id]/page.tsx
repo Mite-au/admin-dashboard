@@ -1,6 +1,6 @@
 import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
-import { getPost, getUser } from '@/lib/fetchers';
+import { getPost, getUser, optional } from '@/lib/fetchers';
 import { ListingDetailClient } from './ListingDetailClient';
 
 export default async function ListingDetailPage({
@@ -10,7 +10,10 @@ export default async function ListingDetailPage({
 }) {
   const { id } = await params;
   const post = await getPost(id);
-  const seller = await getUser(post.seller.id);
+  // Listings from deleted or anonymised accounts come back without a seller,
+  // and the seller lookup itself can 404 — neither should kill the page.
+  const sellerId = post?.seller?.id;
+  const seller = sellerId ? await optional(getUser(sellerId)) : null;
 
   return (
     <>

@@ -1,16 +1,36 @@
-export function formatDate(iso: string) {
+/**
+ * All four formatters take whatever the backend sent. `Intl` throws on a bad
+ * currency code and `new Date(null)` silently means 1970, so null/garbage is
+ * normalised here rather than at ~40 call sites.
+ */
+function toDate(iso: string | null | undefined): Date | null {
+  if (typeof iso !== 'string' || iso === '') return null;
   const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+export function formatDate(iso: string | null | undefined) {
+  const d = toDate(iso);
+  if (!d) return '—';
   return d.toLocaleDateString('en-AU', { year: 'numeric', month: 'short', day: '2-digit' });
 }
-export function formatDateTime(iso: string) {
-  const d = new Date(iso);
+export function formatDateTime(iso: string | null | undefined) {
+  const d = toDate(iso);
+  if (!d) return '—';
   return d.toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' });
 }
-export function formatMoney(value: number, currency = 'AUD') {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency }).format(value);
+export function formatMoney(value: number | null | undefined, currency?: string | null) {
+  const amount = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  // Intl throws a RangeError on anything that isn't a 3-letter ISO code.
+  const code =
+    typeof currency === 'string' && /^[A-Za-z]{3}$/.test(currency)
+      ? currency.toUpperCase()
+      : 'AUD';
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: code }).format(amount);
 }
-export function formatNumber(value: number) {
-  return new Intl.NumberFormat('en-AU').format(value);
+export function formatNumber(value: number | null | undefined) {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat('en-AU').format(n);
 }
 
 /**

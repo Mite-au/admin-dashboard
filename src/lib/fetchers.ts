@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, isRedirectError } from './api';
 import type {
   ActivityOverview,
   AdminPost,
@@ -43,6 +43,70 @@ function qs(params: Record<string, string | number | undefined | null>): string 
   }
   return parts.length ? `?${parts.join('&')}` : '';
 }
+
+const DEFAULT_PAGE_SIZE = 15;
+
+function finiteNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+/**
+ * List clients call `data.items.map(...)` directly, so a response that isn't
+ * exactly `{ items, total, page, pageSize }` used to crash the whole render.
+ * Accept the shapes the backend has actually returned (`items`, `data`, or a
+ * bare array) and always hand back a well-formed page.
+ */
+function toPaged<T>(raw: unknown): Paged<T> {
+  const src = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const items = Array.isArray(raw)
+    ? (raw as T[])
+    : Array.isArray(src.items)
+      ? (src.items as T[])
+      : Array.isArray(src.data)
+        ? (src.data as T[])
+        : [];
+
+  const pageSize = finiteNumber(src.pageSize, DEFAULT_PAGE_SIZE) || DEFAULT_PAGE_SIZE;
+  return {
+    items,
+    total: finiteNumber(src.total, items.length),
+    page: finiteNumber(src.page, 1),
+    pageSize,
+  };
+}
+
+/** Same idea for endpoints typed as a plain array. */
+function toArray<T>(raw: unknown): T[] {
+  if (Array.isArray(raw)) return raw as T[];
+  const items = (raw as { items?: unknown } | null)?.items;
+  return Array.isArray(items) ? (items as T[]) : [];
+}
+
+/**
+ * Run a non-critical fetch, degrading to `fallback` when it fails so one dead
+ * endpoint doesn't take the page down with it. Auth redirects still propagate.
+ */
+export async function optional<T>(promise: Promise<T>, fallback: T): Promise<T>;
+export async function optional<T>(promise: Promise<T>): Promise<T | null>;
+export async function optional<T>(
+  promise: Promise<T>,
+  fallback: T | null = null,
+): Promise<T | null> {
+  try {
+    return await promise;
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
+    console.error('[fetchers] optional fetch failed:', err);
+    return fallback;
+  }
+}
+
+export const emptyPage = <T>(): Paged<T> => ({
+  items: [],
+  total: 0,
+  page: 1,
+  pageSize: DEFAULT_PAGE_SIZE,
+});
 
 export type UserFilters = {
   page?: number;
@@ -142,32 +206,38 @@ export const getSearchGaps = (period: PeriodFilter = {}, limit?: number) =>
   api<SearchGapsResponse>(`/admin/search-gaps${qs({ ...period, limit })}`);
 
 export const getUsers = (filters: UserFilters = {}) =>
-  api<Paged<AdminUser>>(`/admin/users${qs({ pageSize: 15, ...filters })}`);
+  api(`/admin/users${qs({ pageSize: DEFAULT_PAGE_SIZE, ...filters })}`).then(toPaged<AdminUser>);
 
 export const getUser = (id: string) => api<AdminUser>(`/admin/users/${id}`);
 
 export const getUserPosts = (id: string) =>
-  api<Paged<AdminPost>>(`/admin/users/${id}/posts`);
+  api(`/admin/users/${id}/posts`).then(toPaged<AdminPost>);
 
 export const getUserThreads = (id: string) =>
-  api<AdminUserThread[]>(`/admin/users/${id}/threads`);
+  api(`/admin/users/${id}/threads`).then(toArray<AdminUserThread>);
 
 export const getUserConversations = (id: string) =>
-  api<AdminUserConversation[]>(`/admin/users/${id}/conversations`);
+  api(`/admin/users/${id}/conversations`).then(toArray<AdminUserConversation>);
 
 export const getUserPurchases = (id: string) =>
-  api<Paged<AdminUserPurchase>>(`/admin/users/${id}/purchases?pageSize=15`);
+  api(`/admin/users/${id}/purchases?pageSize=${DEFAULT_PAGE_SIZE}`).then(
+    toPaged<AdminUserPurchase>,
+  );
 
 export const getPosts = (filters: PostFilters = {}) =>
-  api<Paged<AdminPost>>(`/admin/posts${qs({ pageSize: 15, ...filters })}`);
+  api(`/admin/posts${qs({ pageSize: DEFAULT_PAGE_SIZE, ...filters })}`).then(toPaged<AdminPost>);
 
 export const getPost = (id: string) => api<AdminPost>(`/admin/posts/${id}`);
 
 export const getTransactions = (filters: TransactionFilters = {}) =>
-  api<Paged<AdminTransaction>>(`/admin/transactions${qs({ pageSize: 15, ...filters })}`);
+  api(`/admin/transactions${qs({ pageSize: DEFAULT_PAGE_SIZE, ...filters })}`).then(
+    toPaged<AdminTransaction>,
+  );
 
 export const getThreads = (filters: ThreadFilters = {}) =>
-  api<Paged<AdminThreadListItem>>(`/admin/threads${qs({ pageSize: 15, ...filters })}`);
+  api(`/admin/threads${qs({ pageSize: DEFAULT_PAGE_SIZE, ...filters })}`).then(
+    toPaged<AdminThreadListItem>,
+  );
 
 export const getThread = (id: string) => api<AdminThreadDetail>(`/admin/threads/${id}`);
 
@@ -175,9 +245,11 @@ export const getThreadRequests = (filters: ThreadRequestFilters = {}) =>
   api<AdminThreadRequest[]>(`/admin/thread-requests${qs(filters)}`);
 
 export const getReports = (filters: ReportFilters = {}) =>
-  api<Paged<AdminReport>>(`/admin/reports${qs({ pageSize: 15, ...filters })}`);
+  api(`/admin/reports${qs({ pageSize: DEFAULT_PAGE_SIZE, ...filters })}`).then(
+    toPaged<AdminReport>,
+  );
 
 export const getReport = (id: string) => api<AdminReport>(`/admin/reports/${id}`);
 
 export const getUserReports = (userId: string): Promise<AdminReport[]> =>
-  api<AdminReport[]>(`/admin/users/${userId}/reports`);
+  api(`/admin/users/${userId}/reports`).then(toArray<AdminReport>);

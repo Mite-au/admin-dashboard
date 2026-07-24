@@ -33,9 +33,20 @@ export function SellerCard({
   seller,
   className = '',
 }: {
-  seller: AdminUser;
+  seller: AdminUser | null;
   className?: string;
 }) {
+  if (!seller) {
+    return (
+      <section className={`card-inner p-6 space-y-2 ${className}`.trim()}>
+        <p className="text-xs font-medium uppercase tracking-wide text-ink-500">Seller</p>
+        <p className="text-sm text-ink-500">
+          Seller account unavailable — it may have been deleted.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className={`card-inner p-6 space-y-5 ${className}`.trim()}>
       <div className="space-y-1">

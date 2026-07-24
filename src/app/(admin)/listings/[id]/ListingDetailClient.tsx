@@ -19,7 +19,7 @@ export function ListingDetailClient({
   seller,
 }: {
   post: AdminPost;
-  seller: AdminUser;
+  seller: AdminUser | null;
 }) {
   const [tab, setTab] = useState<TabKey>('transaction');
 
@@ -28,7 +28,7 @@ export function ListingDetailClient({
       {/* ── Photo gallery + metadata ────────────────────────────────────── */}
       <section className="card-inner lg:col-span-5 p-6">
         <div className="grid grid-cols-3 gap-2">
-          {(post.photos.length ? post.photos : Array(9).fill('')).slice(0, 9).map((src, i) => (
+          {(post.photos?.length ? post.photos : Array(9).fill('')).slice(0, 9).map((src, i) => (
             <div
               key={i}
               className="relative aspect-square rounded-md overflow-hidden bg-ink-100"
@@ -58,12 +58,16 @@ export function ListingDetailClient({
             <MetaField label="Item ID" value={`i${post.id}`} />
             <MetaField label="Created" value={formatDate(post.createdAt)} />
             <MetaField label="Condition">
-              <span className="capitalize">{post.condition.replace('-', ' ')}</span>
+              <span className="capitalize">{post.condition?.replace('-', ' ') ?? '—'}</span>
             </MetaField>
             <MetaField label="Seller">
-              <Link href={`/users/${post.seller.id}`} className="hover:underline">
-                {post.seller.name}
-              </Link>
+              {post.seller ? (
+                <Link href={`/users/${post.seller.id}`} className="hover:underline">
+                  {post.seller.name}
+                </Link>
+              ) : (
+                '—'
+              )}
             </MetaField>
           </dl>
         </div>

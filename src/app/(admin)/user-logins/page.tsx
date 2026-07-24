@@ -3,10 +3,34 @@ import { PageHeader } from '@/components/PageHeader';
 import { Topbar } from '@/components/Topbar';
 import { getUserLogins } from '@/lib/fetchers';
 import { formatDateTime, formatNumber } from '@/lib/format';
+import type { UserLoginsResponse } from '@/lib/types';
 import { UserLoginsChart } from './UserLoginsChart';
 
+/** `/admin/user-logins` is new; tolerate a response that omits fields. */
+function normalise(raw: UserLoginsResponse): UserLoginsResponse {
+  const breakdown = raw?.methodBreakdown ?? {};
+  const count = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+  return {
+    dau: count(raw?.dau),
+    wau: count(raw?.wau),
+    mau: count(raw?.mau),
+    loginsLast7d: count(raw?.loginsLast7d),
+    loginsLast30d: count(raw?.loginsLast30d),
+    methodBreakdown: {
+      email: count(breakdown.email),
+      phone: count(breakdown.phone),
+      google: count(breakdown.google),
+      unknown: count(breakdown.unknown),
+    },
+    daily: (Array.isArray(raw?.daily) ? raw.daily : []).filter(
+      (d) => typeof d?.date === 'string',
+    ),
+    recentLogins: Array.isArray(raw?.recentLogins) ? raw.recentLogins : [],
+  };
+}
+
 export default async function UserLoginsPage() {
-  const data = await getUserLogins(100);
+  const data = normalise(await getUserLogins(100));
 
   const methodTotal =
     data.methodBreakdown.email +
