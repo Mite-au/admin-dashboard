@@ -2,6 +2,7 @@ import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
 import { getPosts, type PostFilters } from '@/lib/fetchers';
 import { ListingsClient } from './ListingsClient';
+import { ListingsExportButton } from './ListingsExportButton';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -26,13 +27,18 @@ export default async function ListingsPage({ searchParams }: { searchParams: Sea
     priceMax: num(sp.priceMax),
     category: first(sp.category),
     memberId: first(sp.memberId),
+    status: first(sp.status),
   };
   const data = await getPosts(filters);
 
   return (
     <>
-      <Topbar breadcrumbs={[{ label: 'Listing', href: '/listings' }]} />
-      <PageHeader title="Listing" />
+      <Topbar breadcrumbs={[{ label: 'Listings', href: '/listings' }]} />
+      <PageHeader
+        title="Listings"
+        description="Every item posted to the marketplace. Open a row to review the photos, the seller, and the publish controls."
+        actions={<ListingsExportButton posts={data.items} />}
+      />
       <ListingsClient data={data} filters={filters} />
     </>
   );

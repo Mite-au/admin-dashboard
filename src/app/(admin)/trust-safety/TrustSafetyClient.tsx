@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDown } from 'lucide-react';
+import { Download, ShieldCheck, SearchX } from 'lucide-react';
 import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
 import { exportToCsv } from '@/components/ExportCsvButton';
-import { formatDate } from '@/lib/format';
+import { Card, EmptyState } from '@/components/ui';
+import { formatDateTime, formatNumber, formatRelative } from '@/lib/format';
 import type { ReportFilters } from '@/lib/fetchers';
 import type {
   AdminReport,
@@ -15,30 +17,31 @@ import type {
   AdminReportTargetType,
   Paged,
 } from '@/lib/types';
+import { TargetTypeChip, targetHref } from './ReportTarget';
 
 type ReportTargetTypeFilterValue = AdminReportTargetType | '';
 type ReportStatusFilterValue = AdminReportStatus | '';
 
 const TARGET_TYPE_OPTIONS: ReadonlyArray<{ value: ReportTargetTypeFilterValue; label: string }> = [
-  { value: '', label: 'All' },
+  { value: '', label: 'All targets' },
   { value: 'post', label: 'Post' },
   { value: 'user', label: 'User' },
 ] as const;
 
 const STATUS_OPTIONS: ReadonlyArray<{ value: ReportStatusFilterValue; label: string }> = [
-  { value: '', label: 'All' },
+  { value: '', label: 'All statuses' },
   { value: 'open', label: 'Open' },
   { value: 'resolved', label: 'Resolved' },
 ] as const;
 
 const CSV_COLUMNS = [
-  { key: 'reportId',   label: 'Report ID' },
-  { key: 'type',       label: 'Type' },
-  { key: 'target',     label: 'Target' },
-  { key: 'reporter',   label: 'Reporter' },
-  { key: 'reason',     label: 'Reason' },
-  { key: 'status',     label: 'Status' },
-  { key: 'date',       label: 'Date' },
+  { key: 'reportId', label: 'Report ID' },
+  { key: 'type', label: 'Target type' },
+  { key: 'target', label: 'Target' },
+  { key: 'reporter', label: 'Reporter' },
+  { key: 'reason', label: 'Reason' },
+  { key: 'status', label: 'Status' },
+  { key: 'date', label: 'Reported at' },
 ] as const;
 
 export function TrustSafetyClient({
@@ -57,21 +60,20 @@ export function TrustSafetyClient({
   );
   const [status, setStatus] = useState<ReportStatusFilterValue>(filters.status ?? '');
 
-  const toReportTargetType = (
-    value: ReportTargetTypeFilterValue,
-  ): ReportFilters['targetType'] => (value === '' ? undefined : value);
-
-  const toReportStatus = (value: ReportStatusFilterValue): ReportFilters['status'] =>
-    value === '' ? undefined : value;
+  const rows = data.items;
+  const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
+  const hasFilters = Boolean(filters.targetType || filters.status);
 
   const pushFilters = (next: Partial<ReportFilters>) => {
     const merged: Record<string, string> = {};
     const final = {
-      targetType: toReportTargetType(targetType),
-      status: toReportStatus(status),
+      targetType: targetType === '' ? undefined : targetType,
+      status: status === '' ? undefined : status,
       page: filters.page,
       ...next,
     };
+    // Empty selections were already mapped to `undefined` above, so there is
+    // no '' case left to strip here.
     for (const [k, v] of Object.entries(final)) {
       if (v === undefined || v === null) continue;
       merged[k] = String(v);
@@ -85,38 +87,42 @@ export function TrustSafetyClient({
     pushFilters({ page: 1 });
   };
 
+  const clearFilters = () => {
+    setTargetType('');
+    setStatus('');
+    startTransition(() => router.replace(pathname));
+  };
+
+  /** Current page only — there is no bulk export endpoint behind this. */
   const handleExport = () => {
-    const rows = data.items.map((r) => ({
+    const csvRows = rows.map((r) => ({
       reportId: r.id,
-      type:     r.targetType,
-      target:   r.targetTitle ?? r.targetId,
+      type: r.targetType,
+      target: r.targetTitle ?? r.targetId,
       reporter: r.reporterName,
-      reason:   r.reason,
-      status:   r.status,
-      date:     formatDate(r.createdAt),
+      reason: r.reason,
+      status: r.status,
+      date: formatDateTime(r.createdAt),
     }));
-    const filename = `reports-${new Date().toISOString().slice(0, 10)}.csv`;
-    exportToCsv(rows, [...CSV_COLUMNS], filename);
+    exportToCsv(
+      csvRows,
+      [...CSV_COLUMNS],
+      `reports-page-${data.page}-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
   };
 
   return (
-    <div className="px-8 pb-8 space-y-6">
+    <div className="space-y-6 px-8 pb-8">
       <form onSubmit={onSearch}>
-      <SearchCard
-        title="Report Search"
-        total={data.total}
-        label="reports"
-        onExport={handleExport}
-      >
-        <SearchField label="Type">
-          <div className="relative">
+        <SearchCard title="Report Search" total={formatNumber(data.total)} label="reports">
+          <SearchField label="Target type">
             <select
-              className="pill-select pr-8"
+              className="pill-select"
               value={targetType}
               onChange={(e) => {
-                const nextTargetType = e.target.value as ReportTargetTypeFilterValue;
-                setTargetType(nextTargetType);
-                pushFilters({ targetType: toReportTargetType(nextTargetType), page: 1 });
+                const next = e.target.value as ReportTargetTypeFilterValue;
+                setTargetType(next);
+                pushFilters({ targetType: next === '' ? undefined : next, page: 1 });
               }}
             >
               {TARGET_TYPE_OPTIONS.map((o) => (
@@ -125,21 +131,15 @@ export function TrustSafetyClient({
                 </option>
               ))}
             </select>
-            <ChevronDown
-              size={14}
-              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-500"
-            />
-          </div>
-        </SearchField>
-        <SearchField label="Status">
-          <div className="relative">
+          </SearchField>
+          <SearchField label="Status">
             <select
-              className="pill-select pr-8"
+              className="pill-select"
               value={status}
               onChange={(e) => {
-                const nextStatus = e.target.value as ReportStatusFilterValue;
-                setStatus(nextStatus);
-                pushFilters({ status: toReportStatus(nextStatus), page: 1 });
+                const next = e.target.value as ReportStatusFilterValue;
+                setStatus(next);
+                pushFilters({ status: next === '' ? undefined : next, page: 1 });
               }}
             >
               {STATUS_OPTIONS.map((o) => (
@@ -148,71 +148,126 @@ export function TrustSafetyClient({
                 </option>
               ))}
             </select>
-            <ChevronDown
-              size={14}
-              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-500"
-            />
-          </div>
-        </SearchField>
-      </SearchCard>
+          </SearchField>
+        </SearchCard>
       </form>
 
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Report ID</th>
-            <th>Type</th>
-            <th>Target</th>
-            <th>Reporter</th>
-            <th>Reason</th>
-            <th className="text-right pr-6">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.items.map((r) => (
-            <tr
-              key={r.id}
-              className="cursor-pointer"
-              onClick={() => router.push(`/trust-safety/${r.id}`)}
+      <Card
+        bleed
+        title="Reports"
+        actions={
+          rows.length > 0 ? (
+            <button
+              type="button"
+              onClick={handleExport}
+              className="btn-icon"
+              title={`Downloads the ${rows.length} report${rows.length === 1 ? '' : 's'} shown on this page. Other pages are not included.`}
             >
-              <td className="text-ink-700">{formatDate(r.createdAt)}</td>
-              <td className="text-ink-700">{r.id}</td>
-              <td>
-                <span
-                  className={
-                    'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize ' +
-                    (r.targetType === 'post'
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'bg-purple-50 text-purple-700')
-                  }
-                >
-                  {r.targetType === 'post' ? 'Post' : 'User'}
-                </span>
-              </td>
-              <td className="text-ink-900 font-medium">
-                {r.targetTitle ?? r.targetId}
-              </td>
-              <td className="text-ink-700">{r.reporterName}</td>
-              <td className="text-ink-700">{r.reason}</td>
-              <td className="text-right pr-6">
-                <StatusBadge status={r.status} />
-              </td>
-            </tr>
-          ))}
-          {data.items.length === 0 && (
-            <tr>
-              <td colSpan={7} className="text-center text-ink-500 py-10">
-                No reports match your filters.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+              <Download size={14} strokeWidth={1.9} />
+              Export page
+            </button>
+          ) : undefined
+        }
+      >
+        {rows.length === 0 ? (
+          hasFilters ? (
+            <EmptyState
+              icon={SearchX}
+              title="No matching reports"
+              description="No report matches this combination of target type and status."
+              action={
+                <button type="button" onClick={clearFilters} className="btn btn-pill-ghost">
+                  Clear filters
+                </button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={ShieldCheck}
+              title="Nothing has been reported"
+              description="When a member reports a post or another member, it lands here for review."
+            />
+          )
+        ) : (
+          <div className="scroll-slim overflow-x-auto">
+            <table className="data-table">
+              <caption className="sr-only">
+                Member reports, page {data.page} of {totalPages}
+              </caption>
+              <thead>
+                <tr>
+                  <th>Target</th>
+                  <th>Type</th>
+                  <th>Reported</th>
+                  <th>Reason</th>
+                  <th>Reporter</th>
+                  <th>Report ID</th>
+                  <th className="pr-5 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const href = targetHref(r);
+                  return (
+                    <tr
+                      key={r.id}
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/trust-safety/${r.id}`)}
+                    >
+                      <td>
+                        {href ? (
+                          <Link
+                            href={href}
+                            onClick={(e) => e.stopPropagation()}
+                            title={`Open the reported ${r.targetType}`}
+                            className="block max-w-[16rem] truncate font-medium text-ink-900 hover:text-brand-600 hover:underline"
+                          >
+                            {r.targetTitle ?? r.targetId}
+                          </Link>
+                        ) : (
+                          <span className="block max-w-[16rem] truncate font-medium text-ink-900">
+                            {r.targetTitle ?? r.targetId}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <TargetTypeChip type={r.targetType} />
+                      </td>
+                      <td>
+                        <span suppressHydrationWarning title={formatDateTime(r.createdAt)}>
+                          {formatRelative(r.createdAt)}
+                        </span>
+                      </td>
+                      <td className="max-w-[14rem] truncate" title={r.reason}>
+                        {r.reason}
+                      </td>
+                      <td className="max-w-[12rem] truncate">{r.reporterName}</td>
+                      <td>
+                        <Link
+                          href={`/trust-safety/${r.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-ink-500 hover:text-brand-600 hover:underline"
+                        >
+                          {r.id}
+                        </Link>
+                      </td>
+                      <td className="pr-5 text-right">
+                        <StatusBadge status={r.status} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       <Pagination
         page={data.page}
-        totalPages={Math.max(1, Math.ceil(data.total / data.pageSize))}
+        totalPages={totalPages}
+        total={data.total}
+        pageSize={data.pageSize}
         onChange={(p) => pushFilters({ page: p })}
       />
     </div>

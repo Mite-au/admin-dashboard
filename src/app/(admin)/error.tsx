@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, TriangleAlert } from 'lucide-react';
 
 /**
  * Catch-all boundary for every admin page. Without it a failed RSC fetch
@@ -25,30 +25,39 @@ export default function AdminError({
   }, [error]);
 
   return (
-    <div className="px-8 py-16 flex items-center justify-center">
-      <div className="card-inner p-10 max-w-lg w-full flex flex-col items-center gap-4 text-center">
-        <span className="rounded-2xl bg-ink-50 p-3 text-ink-700">
-          <RefreshCw size={22} strokeWidth={1.75} />
+    <div className="flex min-h-[60vh] items-center justify-center px-8 py-16">
+      <div className="flex w-full max-w-lg flex-col items-center text-center">
+        <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-panel bg-warning-50 text-warning">
+          <TriangleAlert size={22} strokeWidth={1.9} />
         </span>
-        <p className="text-lg font-semibold text-ink-900">This page couldn&apos;t load</p>
-        <p className="text-sm text-ink-500 leading-6">
-          The dashboard reached the backend but the request failed. This is usually a
-          backend endpoint that is down or returning an unexpected shape.
+
+        <h1 className="text-title font-bold text-ink-900">This page didn&apos;t load</h1>
+        <p className="mt-2 text-data leading-relaxed text-ink-500">
+          The dashboard reached the backend but the request failed — usually an
+          endpoint that is down or returning an unexpected shape.
         </p>
-        {error.digest && (
-          <p className="text-xs text-ink-400 font-mono break-all">digest: {error.digest}</p>
+
+        {(error.message || error.digest) && (
+          <div className="mt-5 w-full rounded-panel border border-ink-200 bg-ink-50 px-4 py-3 text-left">
+            {error.message && (
+              <p className="break-words font-mono text-xs leading-relaxed text-ink-700">
+                {error.message}
+              </p>
+            )}
+            {error.digest && (
+              <p className="mt-1.5 break-all font-mono text-2xs text-ink-400">
+                digest {error.digest}
+              </p>
+            )}
+          </div>
         )}
-        <div className="flex items-center gap-3 mt-2">
-          <button
-            onClick={reset}
-            className="rounded-full border border-ink-200 px-5 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
-          >
+
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          <button onClick={reset} className="btn btn-pill-dark">
+            <RefreshCw size={15} strokeWidth={2} />
             Try again
           </button>
-          <Link
-            href="/overview"
-            className="rounded-full bg-ink-900 px-5 py-2 text-sm text-white hover:bg-ink-700 transition-colors"
-          >
+          <Link href="/overview" className="btn btn-pill-ghost">
             Back to Overview
           </Link>
         </div>

@@ -1,3 +1,4 @@
+import { BellRing } from 'lucide-react';
 import { StubPage } from '@/components/StubPage';
 
 export default function NotificationPage() {
@@ -6,7 +7,8 @@ export default function NotificationPage() {
       breadcrumb="Notification"
       href="/notification"
       title="Notification"
-      description="Notification composer and delivery log — coming soon."
+      icon={BellRing}
+      description="Composing a push or email broadcast, choosing who receives it, and reading back delivery and open rates will happen here. Nothing can be sent from the admin dashboard yet."
     />
   );
 }

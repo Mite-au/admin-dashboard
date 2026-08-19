@@ -33,6 +33,11 @@ export function splitThreadName(name: string): {
   topicName: string;
   regionName: string | null;
 } {
+  // Thread lists come off `toPaged` unnormalised, so `name` really can be
+  // null for a half-written row. Bail before dereferencing rather than
+  // taking down the whole table.
+  if (typeof name !== 'string') return { topicName: '', regionName: null };
+
   const idx = name.lastIndexOf(THREAD_NAME_SEPARATOR);
   if (idx === -1) {
     return { topicName: name, regionName: null };

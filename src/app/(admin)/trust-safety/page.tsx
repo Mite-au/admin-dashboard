@@ -11,6 +11,12 @@ function first(v: string | string[] | undefined): string | undefined {
   return v;
 }
 
+/** A hand-edited `?page=abc` must not become `page=NaN` in the API call. */
+function pageParam(v: string | string[] | undefined): number {
+  const n = Number(first(v));
+  return Number.isInteger(n) && n > 0 ? n : 1;
+}
+
 function parseReportStatus(value: string | undefined): AdminReportStatus | undefined {
   return value === 'open' || value === 'resolved' ? value : undefined;
 }
@@ -22,7 +28,7 @@ function parseReportTargetType(value: string | undefined): AdminReportTargetType
 export default async function TrustSafetyPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const filters: ReportFilters = {
-    page: Number(first(sp.page) ?? 1),
+    page: pageParam(sp.page),
     status: parseReportStatus(first(sp.status)),
     targetType: parseReportTargetType(first(sp.targetType)),
   };
@@ -31,7 +37,10 @@ export default async function TrustSafetyPage({ searchParams }: { searchParams: 
   return (
     <>
       <Topbar breadcrumbs={[{ label: 'Trust & Safety', href: '/trust-safety' }]} />
-      <PageHeader title="Trust & Safety" />
+      <PageHeader
+        title="Trust & Safety"
+        description="What members have reported about each other's posts and profiles. Open a report to read the evidence and mark it resolved."
+      />
       <TrustSafetyClient data={data} filters={filters} />
     </>
   );

@@ -1,12 +1,17 @@
 import { Sidebar } from '@/components/Sidebar';
 
+/**
+ * Two floating shells on a warm canvas. The sidebar is sticky and scrolls
+ * independently; the content shell is a single tall card that the document
+ * scrolls past, so long tables never get trapped in a nested scroller.
+ */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-page p-5 flex gap-5">
+    <div className="flex min-h-screen gap-5 bg-page p-5">
       <Sidebar />
-      <div className="flex-1 min-w-0 card-shell flex flex-col overflow-hidden">
+      <main className="card-shell flex min-w-0 flex-1 flex-col overflow-hidden">
         {children}
-      </div>
+      </main>
     </div>
   );
 }

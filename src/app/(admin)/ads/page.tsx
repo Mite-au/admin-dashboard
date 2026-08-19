@@ -1,3 +1,4 @@
+import { Megaphone } from 'lucide-react';
 import { StubPage } from '@/components/StubPage';
 
 export default function AdsPage() {
@@ -6,7 +7,8 @@ export default function AdsPage() {
       breadcrumb="Ads"
       href="/ads"
       title="Ads"
-      description="Promoted listings and ad campaigns — coming soon."
+      icon={Megaphone}
+      description="Promoted listings, campaign budgets and placement performance will be managed here. No ad inventory is wired to the admin API yet."
     />
   );
 }

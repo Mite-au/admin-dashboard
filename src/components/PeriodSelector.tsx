@@ -2,9 +2,16 @@
 
 import { useCallback, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import clsx from 'clsx';
 import { PRESETS, getPresetRange, resolvePeriod } from '@/lib/period';
 import type { PeriodPreset } from '@/lib/period';
 
+/**
+ * Segmented control over whatever `PRESETS` contains — the list is never
+ * hardcoded here. The track wraps rather than scrolls, and uses a panel
+ * radius instead of a full pill so a wrapped second row still reads as one
+ * control; that is what keeps it intact as the preset list grows.
+ */
 export function PeriodSelector() {
   const router = useRouter();
   const pathname = usePathname();
@@ -60,44 +67,64 @@ export function PeriodSelector() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex flex-wrap gap-1">
-        {PRESETS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => handlePreset(p.id)}
-            className={[
-              'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
-              current.preset === p.id
-                ? 'bg-blue-600 text-white'
-                : 'bg-white border border-ink-100 text-ink-600 hover:border-blue-300 hover:text-blue-600',
-            ].join(' ')}
-          >
-            {p.label}
-          </button>
-        ))}
+      <div
+        role="group"
+        aria-label="Reporting period"
+        className="inline-flex flex-wrap items-center gap-1 rounded-panel bg-ink-50 p-1"
+      >
+        {PRESETS.map((p) => {
+          const isActive = current.preset === p.id;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => handlePreset(p.id)}
+              aria-pressed={isActive}
+              className={clsx(
+                'whitespace-nowrap rounded-[0.625rem] px-3 py-1.5 text-data transition-colors duration-150',
+                isActive
+                  ? 'bg-white font-semibold text-ink-900 shadow-chip'
+                  : 'font-medium text-ink-500 hover:text-ink-900',
+              )}
+            >
+              {p.label}
+            </button>
+          );
+        })}
       </div>
 
       {current.preset === 'custom' && (
-        <div className="flex items-center gap-2">
+        <div className="inline-flex flex-wrap items-center gap-2">
           <input
             type="date"
+            aria-label="From date"
             value={customFrom}
             max={customTo || undefined}
             onChange={(e) => setCustomFrom(e.target.value)}
-            className="text-xs border border-ink-100 rounded-lg px-2 py-1.5 text-ink-700 bg-white"
+            className="tnum rounded-control border border-ink-200 bg-white px-2.5 py-1.5 text-data
+                       text-ink-900 transition-colors hover:border-ink-300
+                       focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100"
           />
-          <span className="text-xs text-ink-400">—</span>
+          <span aria-hidden="true" className="text-ink-400">
+            –
+          </span>
           <input
             type="date"
+            aria-label="To date"
             value={customTo}
             min={customFrom || undefined}
             onChange={(e) => setCustomTo(e.target.value)}
-            className="text-xs border border-ink-100 rounded-lg px-2 py-1.5 text-ink-700 bg-white"
+            className="tnum rounded-control border border-ink-200 bg-white px-2.5 py-1.5 text-data
+                       text-ink-900 transition-colors hover:border-ink-300
+                       focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100"
           />
           <button
+            type="button"
             onClick={handleApply}
             disabled={!canApply}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+            className="rounded-control bg-ink-900 px-3.5 py-1.5 text-data font-semibold text-white
+                       transition-colors hover:bg-ink-700
+                       disabled:cursor-not-allowed disabled:bg-ink-200 disabled:text-ink-400"
           >
             Apply
           </button>

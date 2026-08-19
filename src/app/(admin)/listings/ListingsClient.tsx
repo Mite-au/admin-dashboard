@@ -1,26 +1,32 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import clsx from 'clsx';
+import { ChevronRight, ImageOff, SearchX } from 'lucide-react';
 import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
-import { exportToCsv } from '@/components/ExportCsvButton';
-import { formatDate, formatMoney, isImageSrc } from '@/lib/format';
+import { Card, EmptyState } from '@/components/ui';
+import { formatDateTime, formatMoney, formatRelative, isImageSrc } from '@/lib/format';
 import type { PostFilters } from '@/lib/fetchers';
 import type { AdminPost, Paged } from '@/lib/types';
 
-const CSV_COLUMNS = [
-  { key: 'itemId',    label: 'Item ID' },
-  { key: 'title',     label: 'Item title' },
-  { key: 'category',  label: 'Category' },
-  { key: 'price',     label: 'Price' },
-  { key: 'condition', label: 'Condition' },
-  { key: 'status',    label: 'Status' },
-  { key: 'date',      label: 'Date' },
+const STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'published', label: 'Published' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'sold', label: 'Sold' },
+  { value: 'paused', label: 'Paused' },
+  { value: 'archived', label: 'Archived' },
 ] as const;
+
+function formatCondition(condition: string | null | undefined) {
+  if (!condition) return '—';
+  return condition.replace(/[_-]/g, ' ');
+}
 
 export function ListingsClient({
   data,
@@ -31,9 +37,9 @@ export function ListingsClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
-  const [title, setTitle]       = useState(filters.title ?? '');
+  const [title, setTitle] = useState(filters.title ?? '');
   const [priceMin, setPriceMin] = useState(
     filters.priceMin !== undefined ? String(filters.priceMin) : '',
   );
@@ -42,9 +48,16 @@ export function ListingsClient({
   );
   const [category, setCategory] = useState(filters.category ?? '');
   const [memberId, setMemberId] = useState(filters.memberId ?? '');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [status, setStatus] = useState(filters.status ?? '');
 
-  const categories = Array.from(new Set(data.items.map((p) => p.category)));
+  // The category list is derived from the rows on screen, so the active
+  // filter has to be unioned in — otherwise filtering to a category that
+  // isn't on the current page resets the select to "All" on every render.
+  const categories = Array.from(
+    new Set([...data.items.map((p) => p.category).filter(Boolean), category].filter(Boolean)),
+  ).sort();
+
+  const hasFilters = Boolean(title || priceMin || priceMax || category || memberId || status);
 
   const pushFilters = (next: Partial<Record<string, string | number | undefined>>) => {
     const merged: Record<string, string> = {};
@@ -54,6 +67,7 @@ export function ListingsClient({
       priceMax: priceMax || undefined,
       category,
       memberId,
+      status,
       page: filters.page,
       ...next,
     };
@@ -70,57 +84,56 @@ export function ListingsClient({
     pushFilters({ page: 1 });
   };
 
-  const toggle = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const clearFilters = () => {
+    setTitle('');
+    setPriceMin('');
+    setPriceMax('');
+    setCategory('');
+    setMemberId('');
+    setStatus('');
+    startTransition(() => router.replace(pathname));
   };
 
-  const handleExport = () => {
-    const rows = data.items.map((p) => ({
-      itemId:    `i${p.id}`,
-      title:     p.title,
-      category:  p.category,
-      price:     `${p.price} ${p.currency}`,
-      condition: p.condition,
-      status:    p.status,
-      date:      formatDate(p.createdAt),
-    }));
-    const filename = `listings-${new Date().toISOString().slice(0, 10)}.csv`;
-    exportToCsv(rows, [...CSV_COLUMNS], filename);
+  const openRow = (e: React.MouseEvent<HTMLTableRowElement>, id: string) => {
+    if ((e.target as HTMLElement).closest('a, button, input, select')) return;
+    router.push(`/listings/${id}`);
   };
+
+  const totalPages = Math.max(1, Math.ceil(data.total / Math.max(1, data.pageSize)));
 
   return (
-    <div className="px-8 pb-8 space-y-6">
+    <div className="space-y-6 px-8 pb-8">
       <form onSubmit={onSearch}>
-        <SearchCard
-          title="Listing Search"
-          total={data.total}
-          label="listings"
-          onExport={handleExport}
-        >
+        <SearchCard title="Listing search" total={data.total} label="listings">
           <SearchField label="Item title">
             <input
               className="pill-input"
-              placeholder="Item title"
+              placeholder="Desk lamp"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </SearchField>
-          <SearchField label="Price">
+          <SearchField label="Price range">
             <div className="flex items-center gap-2">
               <input
-                className="pill-input"
+                className="pill-input tnum"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                aria-label="Minimum price"
                 placeholder="Min"
                 value={priceMin}
                 onChange={(e) => setPriceMin(e.target.value)}
               />
-              <span className="text-ink-500">-</span>
+              <span aria-hidden="true" className="text-ink-400">
+                –
+              </span>
               <input
-                className="pill-input"
+                className="pill-input tnum"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                aria-label="Maximum price"
                 placeholder="Max"
                 value={priceMax}
                 onChange={(e) => setPriceMax(e.target.value)}
@@ -128,24 +141,37 @@ export function ListingsClient({
             </div>
           </SearchField>
           <SearchField label="Category">
-            <div className="relative">
-              <select
-                className="pill-select pr-8"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                <option value="">Category</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={14}
-                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-500"
-              />
-            </div>
+            <select
+              className="pill-select"
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                pushFilters({ category: e.target.value, page: 1 });
+              }}
+            >
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </SearchField>
+          <SearchField label="Status">
+            <select
+              className="pill-select"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                pushFilters({ status: e.target.value, page: 1 });
+              }}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </SearchField>
           <SearchField label="Member ID">
             <input
@@ -158,79 +184,129 @@ export function ListingsClient({
         </SearchCard>
       </form>
 
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th className="w-10"></th>
-            <th className="w-20">Images</th>
-            <th>Timestamp</th>
-            <th>Member ID</th>
-            <th>Item title</th>
-            <th>Description</th>
-            <th className="text-right">Price</th>
-            <th>Category</th>
-            <th className="text-right pr-6">Condition</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.items.map((p) => (
-            <tr
-              key={p.id}
-              className="cursor-pointer"
-              onClick={() => router.push(`/listings/${p.id}`)}
+      <Card bleed>
+        {data.items.length === 0 ? (
+          <EmptyState
+            icon={SearchX}
+            title={hasFilters ? 'No listings match these filters' : 'No listings yet'}
+            description={
+              hasFilters
+                ? 'Try a shorter title, a wider price range, or clear the category.'
+                : 'Items appear here as soon as a member publishes one.'
+            }
+            action={
+              hasFilters ? (
+                <button type="button" onClick={clearFilters} className="btn btn-pill-ghost">
+                  Clear filters
+                </button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <>
+            <div
+              aria-busy={isPending}
+              className={clsx(
+                'scroll-slim overflow-x-auto transition-opacity duration-150',
+                isPending && 'opacity-60',
+              )}
             >
-              <td onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-ink-300"
-                  checked={selected.has(p.id)}
-                  onChange={() => toggle(p.id)}
-                />
-              </td>
-              <td>
-                <div className="h-10 w-10 rounded-md bg-ink-100 overflow-hidden relative">
-                  {isImageSrc(p.photos[0]) && (
-                    <Image src={p.photos[0]} alt="" fill sizes="40px" className="object-cover" />
-                  )}
-                </div>
-              </td>
-              <td className="text-ink-700">
-                <div>{formatDate(p.createdAt)}</div>
-                <div className="text-xs text-ink-500">
-                  {new Date(p.createdAt).toLocaleTimeString('en-AU', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  })}
-                </div>
-              </td>
-              <td className="text-ink-700">m{p.seller.id}</td>
-              <td className="font-medium">{p.title}</td>
-              <td className="text-ink-700 max-w-xs truncate">
-                {p.description ?? '—'}
-              </td>
-              <td className="text-right">{formatMoney(p.price, p.currency)}</td>
-              <td className="text-ink-700">{p.category}</td>
-              <td className="text-right pr-6">
-                <StatusBadge status={p.status} />
-              </td>
-            </tr>
-          ))}
-          {data.items.length === 0 && (
-            <tr>
-              <td colSpan={9} className="text-center text-ink-500 py-10">
-                No listings match your filters.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th className="w-14">Photo</th>
+                    <th>Item title</th>
+                    <th>Item ID</th>
+                    <th>Seller</th>
+                    <th>Category</th>
+                    <th>Condition</th>
+                    <th className="text-right">Price</th>
+                    <th>Created</th>
+                    <th className="text-right">Status</th>
+                    <th className="w-10" aria-label="Open" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.items.map((p) => (
+                    <tr
+                      key={p.id}
+                      onClick={(e) => openRow(e, p.id)}
+                      className="group cursor-pointer"
+                    >
+                      <td className="w-14">
+                        <Thumbnail src={p.photos?.[0]} />
+                      </td>
+                      {/* The photo owns the first column, so the identity
+                          styling `.data-table` gives it has to be restated
+                          here on the title. */}
+                      <td className="max-w-[18rem] truncate font-medium text-ink-900">
+                        <Link
+                          href={`/listings/${p.id}`}
+                          className="rounded-sm group-hover:underline"
+                        >
+                          {p.title || 'Untitled listing'}
+                        </Link>
+                      </td>
+                      <td className="tnum">i{p.id}</td>
+                      <td>
+                        {p.seller ? (
+                          <Link
+                            href={`/users/${p.seller.id}`}
+                            className="rounded-sm hover:text-ink-900 hover:underline"
+                          >
+                            {p.seller.name || `m${p.seller.id}`}
+                          </Link>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td>{p.category || '—'}</td>
+                      <td className="capitalize">{formatCondition(p.condition)}</td>
+                      <td className="tnum text-right text-ink-900">
+                        {formatMoney(p.price, p.currency)}
+                      </td>
+                      <td title={formatDateTime(p.createdAt)}>{formatRelative(p.createdAt)}</td>
+                      <td className="text-right">
+                        <StatusBadge status={p.status} />
+                      </td>
+                      <td className="w-10 text-right">
+                        <ChevronRight
+                          size={16}
+                          strokeWidth={2}
+                          aria-hidden="true"
+                          className="inline-block text-ink-300 transition-colors group-hover:text-ink-600"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-      <Pagination
-        page={data.page}
-        totalPages={Math.max(1, Math.ceil(data.total / data.pageSize))}
-        onChange={(p) => pushFilters({ page: p })}
-      />
+            <div className="border-t border-ink-100 px-5">
+              <Pagination
+                page={data.page}
+                totalPages={totalPages}
+                total={data.total}
+                pageSize={data.pageSize}
+                onChange={(p) => pushFilters({ page: p })}
+              />
+            </div>
+          </>
+        )}
+      </Card>
     </div>
+  );
+}
+
+function Thumbnail({ src }: { src?: string | null }) {
+  return (
+    <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-control bg-ink-50 ring-1 ring-ink-100">
+      {isImageSrc(src) ? (
+        <Image src={src} alt="" fill sizes="40px" className="object-cover" />
+      ) : (
+        <ImageOff size={14} strokeWidth={1.8} aria-hidden="true" className="text-ink-300" />
+      )}
+    </span>
   );
 }

@@ -1,6 +1,7 @@
 import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
 import { getPost, getUser, optional } from '@/lib/fetchers';
+import { formatDate } from '@/lib/format';
 import { ListingDetailClient } from './ListingDetailClient';
 
 export default async function ListingDetailPage({
@@ -15,15 +16,20 @@ export default async function ListingDetailPage({
   const sellerId = post?.seller?.id;
   const seller = sellerId ? await optional(getUser(sellerId)) : null;
 
+  const displayTitle = post.title?.trim() || `Listing i${id}`;
+
   return (
     <>
       <Topbar
         breadcrumbs={[
-          { label: 'Listing', href: '/listings' },
-          { label: 'List detail', href: `/listings/${id}` },
+          { label: 'Listings', href: '/listings' },
+          { label: displayTitle, href: `/listings/${id}` },
         ]}
       />
-      <PageHeader title="List detail" />
+      <PageHeader
+        title={displayTitle}
+        description={`Item i${id} · listed ${formatDate(post.createdAt)}`}
+      />
       <ListingDetailClient post={post} seller={seller} />
     </>
   );

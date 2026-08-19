@@ -1,13 +1,14 @@
 'use client';
 
-import { Download } from 'lucide-react';
+import { Download, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 /**
- * The filter/search block shown above each list page in the Figma —
- * a rounded card with a title, a total count, an "Export CSV" button,
- * and a grid of pill-shaped inputs with a dark "Search" button on the
- * right.
+ * The filter block above each list page: a titled panel holding the result
+ * count, an export affordance, a grid of filter inputs, and the submit.
+ *
+ * The count is the one place per page where brand orange is used as data
+ * emphasis — everywhere else orange is reserved for wayfinding.
  */
 export function SearchCard({
   title,
@@ -15,6 +16,7 @@ export function SearchCard({
   label = 'users',
   onSearch,
   onExport,
+  exportLabel = 'Export CSV',
   children,
 }: {
   title: string;
@@ -22,32 +24,32 @@ export function SearchCard({
   label?: string;
   onSearch?: () => void;
   onExport?: () => void;
+  /** Override when the export is narrower than it sounds, e.g. "Export page (15)". */
+  exportLabel?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-ink-100 bg-white px-6 py-5">
-      <div className="flex items-center gap-4 mb-4">
-        <h2 className="font-bold text-ink-900">{title}</h2>
-        <span className="text-sm text-ink-700">
-          Total <span className="text-brand-600 font-semibold">{total}</span> {label}
+    <div className="card-inner px-5 py-5">
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h2 className="text-[0.9375rem] font-semibold text-ink-900">{title}</h2>
+        <span className="h-3.5 w-px bg-ink-200" aria-hidden="true" />
+        <span className="text-data text-ink-500">
+          <span className="tnum font-semibold text-brand-600">{total}</span> {label}
         </span>
-        <button
-          type="button"
-          onClick={onExport}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-ink-50 border border-ink-200 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-100"
-        >
-          <Download size={14} />
-          Export CSV
-        </button>
+        {onExport && (
+          <button type="button" onClick={onExport} className="btn-icon ml-auto">
+            <Download size={14} strokeWidth={1.9} />
+            {exportLabel}
+          </button>
+        )}
       </div>
+
       <div className="flex flex-wrap items-end gap-3">
-        <div className="grid flex-1 min-w-0 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid min-w-0 flex-1 grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2 lg:grid-cols-4">
           {children}
         </div>
-        <button
-          onClick={onSearch}
-          className="btn btn-pill-dark px-8 py-2.5 shrink-0"
-        >
+        <button onClick={onSearch} className="btn btn-pill-dark shrink-0 px-7 py-2.5">
+          <Search size={15} strokeWidth={2} />
           Search
         </button>
       </div>
@@ -63,8 +65,8 @@ export function SearchField({
   children: ReactNode;
 }) {
   return (
-    <div>
-      <label className="block text-xs text-ink-700 mb-1.5">{label}</label>
+    <div className="min-w-0">
+      <label className="label-micro mb-1.5 block">{label}</label>
       {children}
     </div>
   );

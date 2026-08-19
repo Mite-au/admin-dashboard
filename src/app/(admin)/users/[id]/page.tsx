@@ -10,8 +10,9 @@ import {
   getUserThreads,
   optional,
 } from '@/lib/fetchers';
+import { formatDate } from '@/lib/format';
 import type { AdminPost, AdminUserPurchase } from '@/lib/types';
-import { UserDetailClient } from './UserDetailClient';
+import { UserDetail } from './UserDetail';
 
 export default async function UserDetailPage({
   params,
@@ -30,16 +31,21 @@ export default async function UserDetailPage({
     optional(getUserReports(id), []),
   ]);
 
+  const displayName = user.name?.trim() || `m${id}`;
+
   return (
     <>
       <Topbar
         breadcrumbs={[
-          { label: 'User', href: '/users' },
-          { label: 'User detail', href: `/users/${id}` },
+          { label: 'Users', href: '/users' },
+          { label: displayName, href: `/users/${id}` },
         ]}
       />
-      <PageHeader title="User detail" />
-      <UserDetailClient
+      <PageHeader
+        title={displayName}
+        description={`Member m${id} · joined ${formatDate(user.signUpAt ?? user.createdAt)}`}
+      />
+      <UserDetail
         user={user}
         sold={sold}
         threads={threads}

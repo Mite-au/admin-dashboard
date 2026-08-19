@@ -1,185 +1,148 @@
-import { LogIn, Sun, CalendarDays, CalendarRange } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Topbar } from '@/components/Topbar';
+import { DonutChart, Sparkline, TimeSeriesChart } from '@/components/charts';
+import { Card, EmptyState, StatCard } from '@/components/ui';
 import { getUserLogins } from '@/lib/fetchers';
-import { formatDateTime, formatNumber } from '@/lib/format';
-import type { UserLoginsResponse } from '@/lib/types';
-import { UserLoginsChart } from './UserLoginsChart';
+import { formatDateTime, formatNumber, formatPercent, formatRelative } from '@/lib/format';
+import { fillDailySeries, safeRate } from '@/lib/metrics';
+import { addDays, periodLabel, todayDayKey } from '@/lib/period';
+import type { DailyLoginPoint } from '@/lib/types';
 
-/** `/admin/user-logins` is new; tolerate a response that omits fields. */
-function normalise(raw: UserLoginsResponse): UserLoginsResponse {
-  const breakdown = raw?.methodBreakdown ?? {};
-  const count = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
-  return {
-    dau: count(raw?.dau),
-    wau: count(raw?.wau),
-    mau: count(raw?.mau),
-    loginsLast7d: count(raw?.loginsLast7d),
-    loginsLast30d: count(raw?.loginsLast30d),
-    methodBreakdown: {
-      email: count(breakdown.email),
-      phone: count(breakdown.phone),
-      google: count(breakdown.google),
-      unknown: count(breakdown.unknown),
-    },
-    daily: (Array.isArray(raw?.daily) ? raw.daily : []).filter(
-      (d) => typeof d?.date === 'string',
-    ),
-    recentLogins: Array.isArray(raw?.recentLogins) ? raw.recentLogins : [],
-  };
-}
+/** The endpoint reports fixed trailing windows; 30 days is the longest. */
+const WINDOW_DAYS = 30;
 
 export default async function UserLoginsPage() {
-  const data = normalise(await getUserLogins(100));
+  const data = await getUserLogins(100);
 
-  const methodTotal =
-    data.methodBreakdown.email +
-    data.methodBreakdown.phone +
-    data.methodBreakdown.google +
-    data.methodBreakdown.unknown;
+  const to = todayDayKey();
+  const from = addDays(to, -(WINDOW_DAYS - 1));
+  // The backend omits days nobody logged in. Left sparse, a line chart slopes
+  // smoothly across those gaps and a quiet week reads as a slow one.
+  const days = fillDailySeries<DailyLoginPoint>(data.daily, from, to);
+
+  const breakdown = data.methodBreakdown;
+  const methods = [
+    { label: 'Email', value: breakdown.email },
+    { label: 'Phone', value: breakdown.phone },
+    { label: 'Google', value: breakdown.google },
+    { label: 'Unknown', value: breakdown.unknown },
+  ];
+
+  const weeklyReach = safeRate(data.wau, data.mau);
 
   return (
     <>
       <Topbar breadcrumbs={[{ label: 'User Logins', href: '/user-logins' }]} />
-      <PageHeader title="User Logins" />
+      <PageHeader
+        title="User Logins"
+        description="Who is coming back, how often, and how they get in."
+      />
 
-      <div className="px-8 pb-10 space-y-8">
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="space-y-6 px-8 pb-10">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard
-            label="DAU"
-            sub="Logins · last 24h"
-            value={data.dau}
-            Icon={Sun}
+            label="Daily active"
+            value={formatNumber(data.dau)}
+            isSnapshot
+            hint="Last 24 hours"
+            footer={<Sparkline data={days.map((day) => day.uniqueUsers)} />}
           />
           <StatCard
-            label="WAU"
-            sub="Distinct users · last 7d"
-            value={data.wau}
-            Icon={CalendarDays}
+            label="Weekly active"
+            value={formatNumber(data.wau)}
+            isSnapshot
+            // WAU over MAU is the stickiness ratio: what share of the month's
+            // people showed up in the last seven days of it.
+            hint={`${formatPercent(weeklyReach)} of monthly`}
           />
           <StatCard
-            label="MAU"
-            sub="Distinct users · last 30d"
-            value={data.mau}
-            Icon={CalendarRange}
+            label="Monthly active"
+            value={formatNumber(data.mau)}
+            isSnapshot
+            hint="Distinct users, 30 days"
           />
           <StatCard
-            label="Logins · last 30d"
-            sub={`${formatNumber(data.loginsLast7d)} in last 7d`}
-            value={data.loginsLast30d}
-            Icon={LogIn}
+            label="Logins"
+            value={formatNumber(data.loginsLast30d)}
+            hint={`${formatNumber(data.loginsLast7d)} in the last 7 days`}
+            footer={<Sparkline data={days.map((day) => day.logins)} />}
           />
-        </section>
+        </div>
 
-        <section className="space-y-3">
-          <h2 className="text-base font-semibold text-ink-900">Logins · last 30 days</h2>
-          <div className="inner-card p-5">
-            <UserLoginsChart data={data.daily} />
-          </div>
-        </section>
+        <Card
+          title="Logins and the people behind them"
+          subtitle={periodLabel({ from, to })}
+        >
+          {/* Two series on one axis: the gap between them is repeat sessions
+              per user, which neither line carries on its own. */}
+          <TimeSeriesChart
+            data={days}
+            series={[
+              { key: 'logins', label: 'Logins' },
+              { key: 'uniqueUsers', label: 'Unique users' },
+            ]}
+            kind="line"
+            height={320}
+          />
+        </Card>
 
-        <section className="space-y-3">
-          <h2 className="text-base font-semibold text-ink-900">
-            Method split · last 30 days
-          </h2>
-          <div className="inner-card p-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <MethodCell label="Email" value={data.methodBreakdown.email} total={methodTotal} />
-            <MethodCell label="Phone" value={data.methodBreakdown.phone} total={methodTotal} />
-            <MethodCell label="Google" value={data.methodBreakdown.google} total={methodTotal} />
-            <MethodCell label="Unknown" value={data.methodBreakdown.unknown} total={methodTotal} />
-          </div>
-        </section>
+        <Card title="How people sign in" subtitle={periodLabel({ from, to })}>
+          <DonutChart data={methods} valueKind="number" centerLabel="logins" />
+        </Card>
 
-        <section className="space-y-3">
-          <h2 className="text-base font-semibold text-ink-900">Recent logins</h2>
-          <div className="inner-card overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>When</th>
-                  <th>User</th>
-                  <th>Method</th>
-                  <th>Event</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.recentLogins.length === 0 ? (
+        <Card
+          title="Recent logins"
+          subtitle="Most recent 100 sessions"
+          bleed={data.recentLogins.length > 0}
+        >
+          {data.recentLogins.length === 0 ? (
+            <EmptyState
+              icon={LogIn}
+              title="No logins recorded yet"
+              description="Sessions appear here as soon as anyone signs in."
+            />
+          ) : (
+            <div className="overflow-x-auto scroll-slim">
+              <table className="data-table">
+                <thead>
+                  {/* User leads: `.data-table` gives its first column the ink
+                      weight, and the row's identity is the person, not the clock. */}
                   <tr>
-                    <td colSpan={4} className="text-center text-ink-500 py-8">
-                      No user logins recorded yet.
-                    </td>
+                    <th>User</th>
+                    <th>When</th>
+                    <th>Method</th>
+                    <th>Event</th>
                   </tr>
-                ) : (
-                  data.recentLogins.map((row, i) => (
+                </thead>
+                <tbody>
+                  {data.recentLogins.map((row, i) => (
                     <tr key={`${row.userId}-${row.createdAt}-${i}`}>
-                      <td className="text-ink-700">{formatDateTime(row.createdAt)}</td>
-                      <td className="font-medium">
-                        {row.email ?? row.phone ?? `user #${row.userId}`}
+                      <td>{row.email ?? row.phone ?? `user #${row.userId}`}</td>
+                      {/* Relative for scanning; the exact stamp on hover. */}
+                      <td title={formatDateTime(row.createdAt)}>
+                        {formatRelative(row.createdAt)}
                       </td>
-                      <td className="text-ink-700 capitalize">{row.method}</td>
+                      <td className="capitalize text-ink-700">{row.method}</td>
                       <td>
                         <span
                           className={
                             row.isSignUp
-                              ? 'pill pill-success'
-                              : 'pill bg-ink-50 text-ink-700'
+                              ? 'pill-status pill-success'
+                              : 'pill-status pill-neutral'
                           }
                         >
                           {row.isSignUp ? 'Sign-up' : 'Sign-in'}
                         </span>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
       </div>
     </>
-  );
-}
-
-function StatCard({
-  label,
-  sub,
-  value,
-  Icon,
-}: {
-  label: string;
-  sub: string;
-  value: number;
-  Icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
-}) {
-  return (
-    <div className="inner-card p-5 flex items-start justify-between gap-4">
-      <div className="min-w-0">
-        <p className="text-xs uppercase tracking-wide text-ink-500 font-semibold">{label}</p>
-        <p className="mt-2 text-3xl font-extrabold text-ink-900">{formatNumber(value)}</p>
-        <p className="mt-1 text-xs text-ink-500">{sub}</p>
-      </div>
-      <span className="rounded-xl bg-ink-50 p-2.5 text-ink-700 shrink-0">
-        <Icon size={18} strokeWidth={1.75} />
-      </span>
-    </div>
-  );
-}
-
-function MethodCell({
-  label,
-  value,
-  total,
-}: {
-  label: string;
-  value: number;
-  total: number;
-}) {
-  const pct = total > 0 ? (value / total) * 100 : 0;
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-ink-500 font-semibold">{label}</p>
-      <p className="mt-1 text-2xl font-extrabold text-ink-900">{formatNumber(value)}</p>
-      <p className="mt-0.5 text-xs text-ink-500 tabular-nums">{pct.toFixed(1)}%</p>
-    </div>
   );
 }

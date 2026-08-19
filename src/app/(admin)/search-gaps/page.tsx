@@ -1,10 +1,22 @@
-import { Search, SearchX, ListFilter, Hash } from 'lucide-react';
-import { Topbar } from '@/components/Topbar';
+import { Suspense } from 'react';
+import { SearchX, TrendingUp } from 'lucide-react';
+import clsx from 'clsx';
+import { ExportCsvButton } from '@/components/ExportCsvButton';
 import { PageHeader } from '@/components/PageHeader';
 import { PeriodSelector } from '@/components/PeriodSelector';
+import { Topbar } from '@/components/Topbar';
+import { Card, EmptyState, StatCard } from '@/components/ui';
 import { getSearchGaps } from '@/lib/fetchers';
-import { formatDateTime, formatNumber } from '@/lib/format';
-import { resolvePeriodFromRecord } from '@/lib/period';
+import {
+  formatDateTime,
+  formatDeltaPoints,
+  formatNumber,
+  formatPercent,
+  formatRelative,
+} from '@/lib/format';
+import { computeDelta, formatDelta, maxBy } from '@/lib/metrics';
+import { periodLabel, previousPeriod, resolvePeriodFromRecord } from '@/lib/period';
+import type { SearchGapRow, TopQueryRow } from '@/lib/types';
 
 export default async function SearchGapsPage({
   searchParams,
@@ -13,167 +25,217 @@ export default async function SearchGapsPage({
 }) {
   const rawParams = await searchParams;
   const { from, to } = resolvePeriodFromRecord(rawParams);
-  const data = await getSearchGaps({ from, to }, 50);
+  const period = { from, to };
+  const data = await getSearchGaps(period, 50);
+
+  const totals = data.totals;
+  const prev = data.previousTotals;
+  const comparison = `${periodLabel(period)} · against ${periodLabel(previousPeriod(period))}`;
+
+  const searchesDelta = computeDelta(totals.searches, prev.searches);
+  const zeroDelta = computeDelta(totals.zeroResultSearches, prev.zeroResultSearches);
+  const rateDelta = computeDelta(totals.zeroResultRate, prev.zeroResultRate);
+  const queriesDelta = computeDelta(totals.distinctQueries, prev.distinctQueries);
+
+  // The bar in each `searches` cell is scaled against the busiest row in its
+  // own table, so the two tables stay independently readable.
+  const busiestGap = maxBy(data.gaps, (row) => row.searches)?.searches ?? 0;
+  const busiestQuery = maxBy(data.topQueries, (row) => row.searches)?.searches ?? 0;
+
+  // Exported already-rendered: a spreadsheet column of `0.9333` is a worse
+  // artefact than one of "93.3%", and the rate is a fraction on the wire.
+  const gapExportRows = data.gaps.map((row) => ({
+    query: row.query,
+    searches: row.searches,
+    zeroResults: row.zeroResults,
+    zeroResultRate: formatPercent(row.zeroResultRate),
+    lastSearchedAt: formatDateTime(row.lastSearchedAt),
+  }));
 
   return (
     <>
       <Topbar breadcrumbs={[{ label: 'Search Gaps', href: '/search-gaps' }]} />
-      <PageHeader title="Search Gaps" />
+      <PageHeader
+        title="Search Gaps"
+        description="What buyers looked for and didn't find — the shortest path to knowing which sellers to recruit."
+      />
 
-      <div className="px-8 pb-10 space-y-8">
-        <PeriodSelector />
+      <div className="space-y-6 px-8 pb-10">
+        <Suspense>
+          <PeriodSelector />
+        </Suspense>
 
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard
             label="Searches"
-            sub={`prev ${formatNumber(data.previousTotals.searches)}`}
-            value={data.totals.searches}
-            Icon={Search}
+            value={formatNumber(totals.searches)}
+            delta={{ raw: searchesDelta.raw, formatted: formatDelta(searchesDelta) }}
+            hint={`prev ${formatNumber(prev.searches)}`}
           />
           <StatCard
             label="Zero-result searches"
-            sub={`prev ${formatNumber(data.previousTotals.zeroResultSearches)}`}
-            value={data.totals.zeroResultSearches}
-            Icon={SearchX}
+            value={formatNumber(totals.zeroResultSearches)}
+            // Up is bad: the sign is negated for colour only, so the printed
+            // figure still reads in its true direction.
+            delta={{ raw: -zeroDelta.raw, formatted: formatDelta(zeroDelta) }}
+            hint={`prev ${formatNumber(prev.zeroResultSearches)}`}
           />
           <StatCard
             label="Zero-result rate"
-            sub={`prev ${(data.previousTotals.zeroResultRate * 100).toFixed(1)}%`}
-            value={`${(data.totals.zeroResultRate * 100).toFixed(1)}%`}
-            Icon={ListFilter}
+            value={formatPercent(totals.zeroResultRate)}
+            // Two rates differ in percentage POINTS, never in percent.
+            delta={{ raw: -rateDelta.raw, formatted: formatDeltaPoints(rateDelta.raw) }}
+            hint={`prev ${formatPercent(prev.zeroResultRate)}`}
           />
           <StatCard
             label="Distinct queries"
-            sub={`prev ${formatNumber(data.previousTotals.distinctQueries)}`}
-            value={data.totals.distinctQueries}
-            Icon={Hash}
+            value={formatNumber(totals.distinctQueries)}
+            delta={{ raw: queriesDelta.raw, formatted: formatDelta(queriesDelta) }}
+            hint={`prev ${formatNumber(prev.distinctQueries)}`}
           />
-        </section>
+        </div>
 
-        <section className="space-y-3">
-          <div>
-            <h2 className="text-base font-semibold text-ink-900">
-              Unmet demand — searches with zero results
-            </h2>
-            <p className="text-xs text-ink-500 mt-1">
-              What buyers looked for and didn&apos;t find. Recruit sellers or seed
-              listings for the top rows. Tracking starts from the search-event
-              deploy; older periods show no data.
-            </p>
-          </div>
-          <div className="inner-card overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Query</th>
-                  <th>Searches</th>
-                  <th>Zero results</th>
-                  <th>Zero-result rate</th>
-                  <th>Last searched</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.gaps.length === 0 ? (
+        <Card
+          title="Unmet demand"
+          subtitle={comparison}
+          bleed={data.gaps.length > 0}
+          actions={
+            data.gaps.length > 0 ? (
+              <ExportCsvButton
+                data={gapExportRows}
+                filename={`search-gaps_${from}_${to}.csv`}
+                columns={[
+                  { key: 'query', label: 'Query' },
+                  { key: 'searches', label: 'Searches' },
+                  { key: 'zeroResults', label: 'Zero results' },
+                  { key: 'zeroResultRate', label: 'Zero-result rate' },
+                  { key: 'lastSearchedAt', label: 'Last searched' },
+                ]}
+              />
+            ) : undefined
+          }
+        >
+          {data.gaps.length === 0 ? (
+            <EmptyState
+              icon={SearchX}
+              title="Every search found something"
+              description="No query came back empty in this period. Search events are only recorded from the day tracking shipped, so an older window can look this way for the wrong reason."
+            />
+          ) : (
+            <div className="overflow-x-auto scroll-slim">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan={5} className="text-center text-ink-500 py-8">
-                      No zero-result searches recorded in this period.
-                    </td>
+                    <th>Query</th>
+                    <th>Searches</th>
+                    <th>Zero results</th>
+                    <th>Zero-result rate</th>
+                    <th>Last searched</th>
                   </tr>
-                ) : (
-                  data.gaps.map((row) => (
-                    <tr key={row.query}>
-                      <td className="font-medium">{row.query}</td>
-                      <td className="text-ink-700 tabular-nums">
-                        {formatNumber(row.searches)}
-                      </td>
-                      <td className="text-ink-700 tabular-nums">
-                        {formatNumber(row.zeroResults)}
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            row.zeroResultRate >= 0.9
-                              ? 'pill bg-red-50 text-red-700'
-                              : 'pill bg-ink-50 text-ink-700'
-                          }
-                        >
-                          {(row.zeroResultRate * 100).toFixed(0)}%
-                        </span>
-                      </td>
-                      <td className="text-ink-700">
-                        {formatDateTime(row.lastSearchedAt)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                </thead>
+                <tbody>
+                  {data.gaps.map((row) => (
+                    <GapRow key={row.query} row={row} busiest={busiestGap} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
 
-        <section className="space-y-3">
-          <h2 className="text-base font-semibold text-ink-900">Top searches</h2>
-          <div className="inner-card overflow-x-auto">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Query</th>
-                  <th>Searches</th>
-                  <th>Avg results</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.topQueries.length === 0 ? (
+        <Card
+          title="Top searches"
+          subtitle={periodLabel(period)}
+          bleed={data.topQueries.length > 0}
+        >
+          {data.topQueries.length === 0 ? (
+            <EmptyState
+              icon={TrendingUp}
+              title="No searches recorded"
+              description="Nothing was searched in this period, or search tracking had not shipped yet."
+            />
+          ) : (
+            <div className="overflow-x-auto scroll-slim">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan={3} className="text-center text-ink-500 py-8">
-                      No searches recorded in this period.
-                    </td>
+                    <th>Query</th>
+                    <th>Searches</th>
+                    <th>Avg results</th>
                   </tr>
-                ) : (
-                  data.topQueries.map((row) => (
-                    <tr key={row.query}>
-                      <td className="font-medium">{row.query}</td>
-                      <td className="text-ink-700 tabular-nums">
-                        {formatNumber(row.searches)}
-                      </td>
-                      <td className="text-ink-700 tabular-nums">
-                        {row.avgResults.toFixed(1)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                </thead>
+                <tbody>
+                  {data.topQueries.map((row) => (
+                    <TopQueryTableRow key={row.query} row={row} busiest={busiestQuery} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
       </div>
     </>
   );
 }
 
-function StatCard({
-  label,
-  sub,
-  value,
-  Icon,
-}: {
-  label: string;
-  sub: string;
-  value: number | string;
-  Icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
-}) {
+function GapRow({ row, busiest }: { row: SearchGapRow; busiest: number }) {
   return (
-    <div className="inner-card p-5 flex items-start justify-between gap-4">
-      <div className="min-w-0">
-        <p className="text-xs uppercase tracking-wide text-ink-500 font-semibold">{label}</p>
-        <p className="mt-2 text-3xl font-extrabold text-ink-900">
-          {typeof value === 'number' ? formatNumber(value) : value}
-        </p>
-        <p className="mt-1 text-xs text-ink-500">{sub}</p>
-      </div>
-      <span className="rounded-xl bg-ink-50 p-2.5 text-ink-700 shrink-0">
-        <Icon size={18} strokeWidth={1.75} />
+    <tr>
+      <td>{row.query}</td>
+      <td>
+        <CountBar value={row.searches} max={busiest} />
+      </td>
+      <td className="tnum">{formatNumber(row.zeroResults)}</td>
+      <td>
+        <span className={clsx('pill-status', rateTone(row.zeroResultRate))}>
+          {formatPercent(row.zeroResultRate, { digits: 0 })}
+        </span>
+      </td>
+      {/* Relative reads faster when scanning for staleness; the exact stamp
+          stays one hover away rather than eating a column of width. */}
+      <td title={formatDateTime(row.lastSearchedAt)}>{formatRelative(row.lastSearchedAt)}</td>
+    </tr>
+  );
+}
+
+function TopQueryTableRow({ row, busiest }: { row: TopQueryRow; busiest: number }) {
+  return (
+    <tr>
+      <td>{row.query}</td>
+      <td>
+        <CountBar value={row.searches} max={busiest} />
+      </td>
+      <td className="tnum">{row.avgResults.toFixed(1)}</td>
+    </tr>
+  );
+}
+
+/**
+ * A count and its share of the table's largest.
+ *
+ * The bar is redundant encoding — the number is right there — which is exactly
+ * what makes it safe to draw in a neutral grey: it speeds up ranking a long
+ * list without spending a colour that would then have to mean something.
+ */
+function CountBar({ value, max }: { value: number; max: number }) {
+  const width = max > 0 ? Math.max((value / max) * 100, 2) : 0;
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="tnum w-12 shrink-0 text-right">{formatNumber(value)}</span>
+      <span
+        aria-hidden="true"
+        className="hidden h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-ink-100 sm:block"
+      >
+        <span className="block h-full rounded-full bg-ink-400" style={{ width: `${width}%` }} />
       </span>
     </div>
   );
+}
+
+/** Almost-always-empty queries are the recruiting list; the rest is noise. */
+function rateTone(rate: number): string {
+  if (rate >= 0.9) return 'pill-danger';
+  if (rate >= 0.5) return 'pill-warning';
+  return 'pill-neutral';
 }

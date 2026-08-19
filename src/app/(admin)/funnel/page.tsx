@@ -1,12 +1,14 @@
-import { ArrowRight, TrendingUp } from 'lucide-react';
-import { Topbar } from '@/components/Topbar';
+import { Suspense } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { PeriodSelector } from '@/components/PeriodSelector';
+import { Topbar } from '@/components/Topbar';
+import { FunnelSteps } from '@/components/charts';
+import { Card, StatCard } from '@/components/ui';
+import { formatNumber, formatPercent } from '@/lib/format';
 import { getFunnel } from '@/lib/fetchers';
-import { formatNumber } from '@/lib/format';
-import { resolvePeriodFromRecord } from '@/lib/period';
+import { computeDelta, formatDelta } from '@/lib/metrics';
+import { periodLabel, previousPeriod, resolvePeriodFromRecord } from '@/lib/period';
 import type { FunnelStage } from '@/lib/types';
-import { FunnelChart } from './FunnelChart';
 
 export default async function FunnelPage({
   searchParams,
@@ -15,79 +17,69 @@ export default async function FunnelPage({
 }) {
   const rawParams = await searchParams;
   const { from, to } = resolvePeriodFromRecord(rawParams);
-  const data = await getFunnel({ from, to });
+  const period = { from, to };
+  const data = await getFunnel(period);
+
+  // Labelled from the requested window rather than the payload's own
+  // `since`/`until`: those degrade to an empty string when the backend omits
+  // them, which would caption the chart with an em dash.
+  const comparison = `${periodLabel(period)} · against ${periodLabel(previousPeriod(period))}`;
 
   return (
     <>
       <Topbar breadcrumbs={[{ label: 'Funnel', href: '/funnel' }]} />
-      <PageHeader title="Funnel" />
+      <PageHeader
+        title="Funnel"
+        description="Search through to completed trade, and the step where people leave."
+      />
 
-      <div className="px-8 pb-10 space-y-8">
-        <PeriodSelector />
+      <div className="space-y-6 px-8 pb-10">
+        <Suspense>
+          <PeriodSelector />
+        </Suspense>
 
-        <section className="inner-card p-5 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-ink-500 font-semibold">
-              Search → completed trade
-            </p>
-            <p className="mt-2 text-3xl font-extrabold text-ink-900">
-              {(data.searchToTradeRate * 100).toFixed(2)}%
-            </p>
-            <p className="mt-1 text-xs text-ink-500">
-              End-to-end conversion for the selected period. Searches are counted
-              from when search tracking shipped — early periods may under-count
-              the first stage.
-            </p>
-          </div>
-          <span className="rounded-xl bg-ink-50 p-2.5 text-ink-700 shrink-0">
-            <TrendingUp size={18} strokeWidth={1.75} />
-          </span>
-        </section>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+          <StatCard
+            label="Search → trade"
+            value={formatPercent(data.searchToTradeRate, { digits: 2 })}
+            hint="End to end"
+          />
+          {data.stages.map((stage) => (
+            <StageCard key={stage.key} stage={stage} />
+          ))}
+        </div>
 
-        <section className="space-y-3">
-          <h2 className="text-base font-semibold text-ink-900">
-            Stage volumes · this period vs previous
-          </h2>
-          <div className="inner-card p-5">
-            <FunnelChart stages={data.stages} />
-          </div>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-base font-semibold text-ink-900">Stage conversion</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {data.stages.map((stage) => (
-              <StageCard key={stage.key} stage={stage} />
-            ))}
-          </div>
-        </section>
+        <Card title="Where people drop off" subtitle={comparison}>
+          <FunnelSteps stages={data.stages} />
+          <p className="mt-6 border-t border-ink-100 pt-4 text-data leading-relaxed text-ink-500">
+            Searches are counted from the day search tracking shipped, so a period
+            reaching back before that under-counts the first stage — and every
+            conversion measured against it reads high.
+          </p>
+        </Card>
       </div>
     </>
   );
 }
 
+/**
+ * One stage's volume. The delta compares this stage against itself a period
+ * ago; the conversion hint compares it against the stage above it, which is
+ * the number that says whether the step is working.
+ */
 function StageCard({ stage }: { stage: FunnelStage }) {
-  const delta = stage.count - stage.prevCount;
-  const deltaClass =
-    delta > 0 ? 'text-emerald-600' : delta < 0 ? 'text-red-600' : 'text-ink-500';
+  const delta = computeDelta(stage.count, stage.prevCount);
+
   return (
-    <div className="inner-card p-5">
-      <p className="text-xs uppercase tracking-wide text-ink-500 font-semibold">
-        {stage.label}
-      </p>
-      <p className="mt-2 text-3xl font-extrabold text-ink-900">
-        {formatNumber(stage.count)}
-      </p>
-      <p className={`mt-1 text-xs font-medium tabular-nums ${deltaClass}`}>
-        {delta > 0 ? '+' : ''}
-        {formatNumber(delta)} vs previous ({formatNumber(stage.prevCount)})
-      </p>
-      {stage.conversionFromPrev !== null && (
-        <p className="mt-2 text-xs text-ink-500 flex items-center gap-1">
-          <ArrowRight size={12} strokeWidth={2} />
-          {(stage.conversionFromPrev * 100).toFixed(1)}% of previous stage
-        </p>
-      )}
-    </div>
+    <StatCard
+      label={stage.label}
+      value={formatNumber(stage.count)}
+      delta={{ raw: delta.raw, formatted: formatDelta(delta) }}
+      hint={
+        stage.conversionFromPrev === null
+          ? 'Top of funnel'
+          : `${formatPercent(stage.conversionFromPrev)} of previous stage`
+      }
+    />
   );
 }

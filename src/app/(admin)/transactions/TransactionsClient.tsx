@@ -1,23 +1,27 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { Download, Receipt, SearchX } from 'lucide-react';
 import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
 import { exportToCsv } from '@/components/ExportCsvButton';
-import { formatDate, formatMoney } from '@/lib/format';
+import { Card, EmptyState } from '@/components/ui';
+import { formatDate, formatDateTime, formatMoney, formatNumber } from '@/lib/format';
 import type { TransactionFilters } from '@/lib/fetchers';
 import type { AdminTransaction, Paged } from '@/lib/types';
 
 const CSV_COLUMNS = [
   { key: 'transactionId', label: 'Transaction ID' },
-  { key: 'item',          label: 'Item' },
-  { key: 'buyer',         label: 'Buyer' },
-  { key: 'seller',        label: 'Seller' },
-  { key: 'amount',        label: 'Amount' },
-  { key: 'status',        label: 'Status' },
-  { key: 'date',          label: 'Date' },
+  { key: 'item', label: 'Item' },
+  { key: 'buyer', label: 'Buyer' },
+  { key: 'seller', label: 'Seller' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'currency', label: 'Currency' },
+  { key: 'status', label: 'Status' },
+  { key: 'date', label: 'Date' },
 ] as const;
 
 export function TransactionsClient({
@@ -31,21 +35,20 @@ export function TransactionsClient({
   const pathname = usePathname();
   const [, startTransition] = useTransition();
 
-  const [postTitle, setPostTitle]         = useState(filters.postTitle ?? '');
-  const [buyer, setBuyer]                 = useState(filters.buyer ?? '');
-  const [seller, setSeller]               = useState(filters.seller ?? '');
+  const [postTitle, setPostTitle] = useState(filters.postTitle ?? '');
+  const [buyer, setBuyer] = useState(filters.buyer ?? '');
+  const [seller, setSeller] = useState(filters.seller ?? '');
   const [transactionId, setTransactionId] = useState(filters.transactionId ?? '');
+
+  const rows = data.items;
+  const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
+  const hasFilters = Boolean(
+    filters.postTitle || filters.buyer || filters.seller || filters.transactionId,
+  );
 
   const pushFilters = (next: Partial<Record<string, string | number | undefined>>) => {
     const merged: Record<string, string> = {};
-    const final = {
-      postTitle,
-      buyer,
-      seller,
-      transactionId,
-      page: filters.page,
-      ...next,
-    };
+    const final = { postTitle, buyer, seller, transactionId, page: filters.page, ...next };
     for (const [k, v] of Object.entries(final)) {
       if (v === undefined || v === null || v === '') continue;
       merged[k] = String(v);
@@ -59,29 +62,42 @@ export function TransactionsClient({
     pushFilters({ page: 1 });
   };
 
+  const clearFilters = () => {
+    setPostTitle('');
+    setBuyer('');
+    setSeller('');
+    setTransactionId('');
+    startTransition(() => router.replace(pathname));
+  };
+
+  /**
+   * Exports the rows currently on screen — not the whole result set. The
+   * button says "page" for that reason: there is no bulk endpoint behind it,
+   * and a CSV silently truncated at the page boundary is how a reconciliation
+   * goes wrong.
+   */
   const handleExport = () => {
-    const rows = data.items.map((t) => ({
-      transactionId: `t${t.id}`,
-      item:          t.postTitle,
-      buyer:         t.buyer,
-      seller:        t.seller,
-      amount:        `${t.amount} ${t.currency}`,
-      status:        t.status,
-      date:          formatDate(t.createdAt),
+    const csvRows = rows.map((t) => ({
+      transactionId: t.id,
+      item: t.postTitle,
+      buyer: t.buyer,
+      seller: t.seller,
+      amount: t.amount,
+      currency: t.currency,
+      status: t.status,
+      date: formatDate(t.createdAt),
     }));
-    const filename = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
-    exportToCsv(rows, [...CSV_COLUMNS], filename);
+    exportToCsv(
+      csvRows,
+      [...CSV_COLUMNS],
+      `transactions-page-${data.page}-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
   };
 
   return (
-    <div className="px-8 pb-8 space-y-6">
+    <div className="space-y-6 px-8 pb-8">
       <form onSubmit={onSearch}>
-        <SearchCard
-          title="Transaction Search"
-          total={data.total}
-          label="transactions"
-          onExport={handleExport}
-        >
+        <SearchCard title="Transaction Search" total={formatNumber(data.total)} label="transactions">
           <SearchField label="Item title">
             <input
               className="pill-input"
@@ -109,7 +125,7 @@ export function TransactionsClient({
           <SearchField label="Transaction ID">
             <input
               className="pill-input"
-              placeholder="t_000"
+              placeholder="Exact ID"
               value={transactionId}
               onChange={(e) => setTransactionId(e.target.value)}
             />
@@ -117,63 +133,107 @@ export function TransactionsClient({
         </SearchCard>
       </form>
 
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th className="w-10"></th>
-            <th>Date</th>
-            <th>Transaction ID</th>
-            <th>Item</th>
-            <th>Buyer</th>
-            <th>Seller</th>
-            <th className="text-right">Amount</th>
-            <th className="text-right pr-6">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.items.map((t) => (
-            <tr
-              key={t.id}
-              className="cursor-pointer"
-              onClick={() => router.push(`/listings/${t.postId}`)}
+      <Card
+        bleed
+        title="Orders"
+        actions={
+          rows.length > 0 ? (
+            <button
+              type="button"
+              onClick={handleExport}
+              className="btn-icon"
+              title={`Downloads the ${rows.length} order${rows.length === 1 ? '' : 's'} shown on this page. Other pages are not included.`}
             >
-              <td onClick={(e) => e.stopPropagation()}>
-                <input type="checkbox" className="h-4 w-4 rounded border-ink-300" />
-              </td>
-              <td className="text-ink-700">{formatDate(t.createdAt)}</td>
-              <td className="text-ink-700">t{t.id}</td>
-              <td className="font-medium">{t.postTitle}</td>
-              <td className="text-ink-700">{t.buyer}</td>
-              <td className="text-ink-700">{t.seller}</td>
-              <td className="text-right">{formatMoney(t.amount, t.currency)}</td>
-              <td className="text-right pr-6">
-                <StatusBadge
-                  status={
-                    t.status === 'completed'
-                      ? 'complete'
-                      : t.status === 'disputed'
-                        ? 'fail'
-                        : t.status === 'pending'
-                          ? 'in progress'
-                          : t.status
-                  }
-                />
-              </td>
-            </tr>
-          ))}
-          {data.items.length === 0 && (
-            <tr>
-              <td colSpan={8} className="text-center text-ink-500 py-10">
-                No transactions match your filters.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+              <Download size={14} strokeWidth={1.9} />
+              Export page
+            </button>
+          ) : undefined
+        }
+      >
+        {rows.length === 0 ? (
+          hasFilters ? (
+            <EmptyState
+              icon={SearchX}
+              title="No matching orders"
+              description="No transaction matches these filters. Widen the search or clear it to see the full ledger."
+              action={
+                <button type="button" onClick={clearFilters} className="btn btn-pill-ghost">
+                  Clear filters
+                </button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={Receipt}
+              title="No transactions yet"
+              description="Orders appear here as soon as buyers and sellers start completing deals on the marketplace."
+            />
+          )
+        ) : (
+          <div className="scroll-slim overflow-x-auto">
+            <table className="data-table">
+              <caption className="sr-only">
+                Marketplace transactions, page {data.page} of {totalPages}
+              </caption>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Transaction ID</th>
+                  <th>Item</th>
+                  <th>Buyer</th>
+                  <th>Seller</th>
+                  <th className="text-right">Amount</th>
+                  <th className="pr-5 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((t) => {
+                  const href = t.postId ? `/listings/${t.postId}` : null;
+                  return (
+                    <tr
+                      key={t.id}
+                      className={href ? 'cursor-pointer' : undefined}
+                      onClick={href ? () => router.push(href) : undefined}
+                    >
+                      <td>
+                        <span title={formatDateTime(t.createdAt)}>{formatDate(t.createdAt)}</span>
+                      </td>
+                      <td className="text-ink-600">{t.id}</td>
+                      <td>
+                        {href ? (
+                          <Link
+                            href={href}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-medium text-ink-900 hover:text-brand-600 hover:underline"
+                          >
+                            {t.postTitle}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-ink-900">{t.postTitle}</span>
+                        )}
+                      </td>
+                      <td>{t.buyer}</td>
+                      <td>{t.seller}</td>
+                      <td className="text-right font-medium text-ink-900">
+                        {formatMoney(t.amount, t.currency)}
+                      </td>
+                      <td className="pr-5 text-right">
+                        <StatusBadge status={t.status} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       <Pagination
         page={data.page}
-        totalPages={Math.max(1, Math.ceil(data.total / data.pageSize))}
+        totalPages={totalPages}
+        total={data.total}
+        pageSize={data.pageSize}
         onChange={(p) => pushFilters({ page: p })}
       />
     </div>

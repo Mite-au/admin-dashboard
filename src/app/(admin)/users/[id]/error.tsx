@@ -2,19 +2,16 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { RefreshCw, TriangleAlert } from 'lucide-react';
 
-function parseStatus(error: Error): { status: number; message: string } {
-  try {
-    const parsed = JSON.parse(error.message);
-    return {
-      status: parsed.status ?? 500,
-      message: parsed.message ?? 'An unexpected error occurred.',
-    };
-  } catch {
-    return { status: 500, message: error.message || 'An unexpected error occurred.' };
-  }
-}
-
+/**
+ * Boundary for one user record. Mirrors the admin-wide boundary, narrowed to
+ * the two things that actually go wrong here: the id doesn't resolve, or the
+ * user endpoint failed.
+ *
+ * In production Next replaces the server message with a generic string and
+ * ships only the digest — that digest is what to grep for in the runtime logs.
+ */
 export default function UserDetailError({
   error,
   reset,
@@ -23,30 +20,43 @@ export default function UserDetailError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[UserDetail]', error);
+    console.error('[user-detail]', error);
   }, [error]);
 
-  const { status, message } = parseStatus(error);
-
   return (
-    <div className="px-8 pb-8 flex flex-col items-center justify-center min-h-[400px] gap-4">
-      <div className="card-inner p-10 flex flex-col items-center gap-4 max-w-md w-full text-center">
-        <span className="text-4xl font-bold text-ink-300">{status}</span>
-        <p className="text-base font-semibold text-ink-900">
-          {status === 404 ? 'User not found' : 'Something went wrong'}
+    <div className="flex min-h-[60vh] items-center justify-center px-8 py-16">
+      <div className="flex w-full max-w-lg flex-col items-center text-center">
+        <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-panel bg-warning-50 text-warning">
+          <TriangleAlert size={22} strokeWidth={1.9} />
+        </span>
+
+        <h1 className="text-title font-bold text-ink-900">This user didn&apos;t load</h1>
+        <p className="mt-2 text-data leading-relaxed text-ink-500">
+          The account may have been deleted, or the user endpoint returned an error.
+          The list is still the fastest way back to a working record.
         </p>
-        <p className="text-sm text-ink-500 break-words">{message}</p>
-        <div className="flex items-center gap-3 mt-2">
-          <button
-            onClick={reset}
-            className="rounded-full border border-ink-200 px-5 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
-          >
+
+        {(error.message || error.digest) && (
+          <div className="mt-5 w-full rounded-panel border border-ink-200 bg-ink-50 px-4 py-3 text-left">
+            {error.message && (
+              <p className="break-words font-mono text-xs leading-relaxed text-ink-700">
+                {error.message}
+              </p>
+            )}
+            {error.digest && (
+              <p className="mt-1.5 break-all font-mono text-2xs text-ink-400">
+                digest {error.digest}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          <button onClick={reset} className="btn btn-pill-dark">
+            <RefreshCw size={15} strokeWidth={2} />
             Try again
           </button>
-          <Link
-            href="/users"
-            className="rounded-full bg-ink-900 px-5 py-2 text-sm text-white hover:bg-ink-700 transition-colors"
-          >
+          <Link href="/users" className="btn btn-pill-ghost">
             Back to Users
           </Link>
         </div>

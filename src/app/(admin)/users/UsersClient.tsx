@@ -1,29 +1,24 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDown } from 'lucide-react';
+import clsx from 'clsx';
+import { ChevronRight, SearchX } from 'lucide-react';
 import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
-import { exportToCsv } from '@/components/ExportCsvButton';
+import { Card, EmptyState } from '@/components/ui';
+import { formatCountry, formatDateTime, formatRelative } from '@/lib/format';
 import type { UserFilters } from '@/lib/fetchers';
 import type { AdminUser, Paged } from '@/lib/types';
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'All' },
+  { value: '', label: 'All statuses' },
   { value: 'active', label: 'Active' },
+  { value: 'pending_profile', label: 'Pending profile' },
   { value: 'suspended', label: 'Suspended' },
   { value: 'banned', label: 'Banned' },
-] as const;
-
-const CSV_COLUMNS = [
-  { key: 'name',        label: 'User Name' },
-  { key: 'email',       label: 'Email' },
-  { key: 'phone',       label: 'Phone' },
-  { key: 'userId',      label: 'User ID' },
-  { key: 'nationality', label: 'Nationality' },
-  { key: 'status',      label: 'Status' },
 ] as const;
 
 export function UsersClient({
@@ -35,14 +30,15 @@ export function UsersClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
-  const [name, setName]         = useState(filters.name ?? '');
-  const [email, setEmail]       = useState(filters.email ?? '');
-  const [phone, setPhone]       = useState(filters.phone ?? '');
+  const [name, setName] = useState(filters.name ?? '');
+  const [email, setEmail] = useState(filters.email ?? '');
+  const [phone, setPhone] = useState(filters.phone ?? '');
   const [memberId, setMemberId] = useState(filters.memberId ?? '');
-  const [status, setStatus]     = useState(filters.status ?? '');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [status, setStatus] = useState(filters.status ?? '');
+
+  const hasFilters = Boolean(name || email || phone || memberId || status);
 
   const pushFilters = (next: Partial<UserFilters>) => {
     const merged: Record<string, string> = {};
@@ -68,41 +64,32 @@ export function UsersClient({
     pushFilters({ page: 1 });
   };
 
-  const toggle = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const clearFilters = () => {
+    setName('');
+    setEmail('');
+    setPhone('');
+    setMemberId('');
+    setStatus('');
+    startTransition(() => router.replace(pathname));
   };
 
-  const handleExport = () => {
-    const rows = data.items.map((u) => ({
-      name:        u.name,
-      email:       u.email ?? '',
-      phone:       u.phone ?? '',
-      userId:      `m${u.id}`,
-      nationality: u.nationality ?? '',
-      status:      u.status,
-    }));
-    const filename = `users-${new Date().toISOString().slice(0, 10)}.csv`;
-    exportToCsv(rows, [...CSV_COLUMNS], filename);
+  // The row is a link, so a click anywhere in it navigates — except on the
+  // controls inside it, which own their own click.
+  const openRow = (e: React.MouseEvent<HTMLTableRowElement>, id: string) => {
+    if ((e.target as HTMLElement).closest('a, button, input, select')) return;
+    router.push(`/users/${id}`);
   };
+
+  const totalPages = Math.max(1, Math.ceil(data.total / Math.max(1, data.pageSize)));
 
   return (
-    <div className="px-8 pb-8 space-y-6">
+    <div className="space-y-6 px-8 pb-8">
       <form onSubmit={onSearch}>
-        <SearchCard
-          title="User Search"
-          total={data.total}
-          label="users"
-          onExport={handleExport}
-        >
+        <SearchCard title="User search" total={data.total} label="users">
           <SearchField label="Name">
             <input
               className="pill-input"
-              placeholder="Name"
+              placeholder="Jane Kim"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -110,6 +97,7 @@ export function UsersClient({
           <SearchField label="Email">
             <input
               className="pill-input"
+              type="email"
               placeholder="mite@mite.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -132,84 +120,116 @@ export function UsersClient({
             />
           </SearchField>
           <SearchField label="Status">
-            <div className="relative">
-              <select
-                className="pill-select pr-8"
-                value={status}
-                onChange={(e) => {
-                  setStatus(e.target.value);
-                  pushFilters({ status: e.target.value, page: 1 });
-                }}
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={14}
-                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-500"
-              />
-            </div>
+            <select
+              className="pill-select"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                pushFilters({ status: e.target.value, page: 1 });
+              }}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </SearchField>
         </SearchCard>
       </form>
 
-      <div>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th className="w-10"></th>
-              <th>User Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>User ID</th>
-              <th>Nationality</th>
-              <th className="text-right pr-6">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.items.map((u) => (
-              <tr
-                key={u.id}
-                className="cursor-pointer"
-                onClick={() => router.push(`/users/${u.id}`)}
-              >
-                <td onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-ink-300 text-ink-800 focus:ring-0"
-                    checked={selected.has(u.id)}
-                    onChange={() => toggle(u.id)}
-                  />
-                </td>
-                <td className="font-medium">{u.name}</td>
-                <td className="text-ink-700">{u.email ?? '—'}</td>
-                <td className="text-ink-700">{u.phone ?? '—'}</td>
-                <td className="text-ink-700">m{u.id}</td>
-                <td className="text-ink-700">{u.nationality ?? '—'}</td>
-                <td className="text-right pr-6">
-                  <StatusBadge status={u.status} />
-                </td>
-              </tr>
-            ))}
-            {data.items.length === 0 && (
-              <tr>
-                <td colSpan={7} className="text-center text-ink-500 py-10">
-                  No users match your filters.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card bleed>
+        {data.items.length === 0 ? (
+          <EmptyState
+            icon={SearchX}
+            title={hasFilters ? 'No users match these filters' : 'No users yet'}
+            description={
+              hasFilters
+                ? 'Try a partial name or email, or widen the status filter.'
+                : 'Accounts appear here as soon as the first one is created.'
+            }
+            action={
+              hasFilters ? (
+                <button type="button" onClick={clearFilters} className="btn btn-pill-ghost">
+                  Clear filters
+                </button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <>
+            <div
+              aria-busy={isPending}
+              className={clsx(
+                'scroll-slim overflow-x-auto transition-opacity duration-150',
+                isPending && 'opacity-60',
+              )}
+            >
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>User name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Member ID</th>
+                    <th>Nationality</th>
+                    <th>Joined</th>
+                    <th className="text-right">Status</th>
+                    <th className="w-10" aria-label="Open" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.items.map((u) => {
+                    const joined = u.signUpAt ?? u.createdAt;
+                    return (
+                      <tr
+                        key={u.id}
+                        onClick={(e) => openRow(e, u.id)}
+                        className="group cursor-pointer"
+                      >
+                        <td>
+                          <Link
+                            href={`/users/${u.id}`}
+                            className="rounded-sm group-hover:underline"
+                          >
+                            {u.name || 'Unnamed account'}
+                          </Link>
+                        </td>
+                        <td>{u.email ?? '—'}</td>
+                        <td className="tnum">{u.phone ?? '—'}</td>
+                        <td className="tnum">m{u.id}</td>
+                        <td>{formatCountry(u.nationality)}</td>
+                        <td title={formatDateTime(joined)}>{formatRelative(joined)}</td>
+                        <td className="text-right">
+                          <StatusBadge status={u.status} />
+                        </td>
+                        <td className="w-10 text-right">
+                          <ChevronRight
+                            size={16}
+                            strokeWidth={2}
+                            aria-hidden="true"
+                            className="inline-block text-ink-300 transition-colors group-hover:text-ink-600"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-      <Pagination
-        page={data.page}
-        totalPages={Math.max(1, Math.ceil(data.total / data.pageSize))}
-        onChange={(p) => pushFilters({ page: p })}
-      />
+            <div className="border-t border-ink-100 px-5">
+              <Pagination
+                page={data.page}
+                totalPages={totalPages}
+                total={data.total}
+                pageSize={data.pageSize}
+                onChange={(p) => pushFilters({ page: p })}
+              />
+            </div>
+          </>
+        )}
+      </Card>
     </div>
   );
 }

@@ -23,8 +23,8 @@ function formatVerificationStatus(seller: AdminUser) {
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs text-ink-500 mb-1">{label}</dt>
-      <dd className="text-sm text-ink-900 break-words">{value}</dd>
+      <dt className="label-micro mb-1">{label}</dt>
+      <dd className="break-words text-data text-ink-900">{value}</dd>
     </div>
   );
 }
@@ -33,28 +33,34 @@ export function SellerCard({
   seller,
   className = '',
 }: {
-  seller: AdminUser | null;
+  /**
+   * Absent for anonymised accounts. Accepts `undefined` as well as `null`
+   * because a listing can outlive the account that posted it, and the two
+   * wire forms (key omitted / explicit null) both occur.
+   */
+  seller?: AdminUser | null;
   className?: string;
 }) {
   if (!seller) {
     return (
-      <section className={`card-inner p-6 space-y-2 ${className}`.trim()}>
-        <p className="text-xs font-medium uppercase tracking-wide text-ink-500">Seller</p>
-        <p className="text-sm text-ink-500">
-          Seller account unavailable — it may have been deleted.
+      <section className={`card-inner space-y-2 p-5 ${className}`.trim()}>
+        <p className="label-micro">Seller</p>
+        <p className="text-data text-ink-500">
+          This account was removed or anonymised. The listing stays on record,
+          but there is no profile left to open.
         </p>
       </section>
     );
   }
 
   return (
-    <section className={`card-inner p-6 space-y-5 ${className}`.trim()}>
-      <div className="space-y-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-ink-500">Seller</p>
-        <h2 className="text-lg font-semibold text-ink-900">{seller.name}</h2>
-      </div>
+    <section className={`card-inner flex flex-col p-5 ${className}`.trim()}>
+      <p className="label-micro">Seller</p>
+      <h2 className="mt-1 text-lg font-semibold tracking-[-0.01em] text-ink-900">
+        {seller.name}
+      </h2>
 
-      <dl className="grid grid-cols-1 gap-y-4">
+      <dl className="mt-5 grid grid-cols-1 gap-y-4 border-t border-ink-100 pt-5">
         <InfoField label="User ID" value={`m${seller.id}`} />
         <InfoField label="Phone" value={seller.phone ?? '—'} />
         <InfoField label="Email" value={seller.email ?? '—'} />
@@ -71,7 +77,10 @@ export function SellerCard({
         />
       </dl>
 
-      <Link href={`/users/${seller.id}`} className="btn btn-pill-dark w-full justify-center">
+      <Link
+        href={`/users/${seller.id}`}
+        className="btn btn-pill-dark mt-5 w-full justify-center"
+      >
         User detail
       </Link>
     </section>
