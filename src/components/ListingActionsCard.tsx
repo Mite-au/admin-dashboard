@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Check, Copy } from 'lucide-react';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { StatusBadge } from '@/components/StatusBadge';
-import { updatePostStatus } from '@/lib/actions';
+import { updatePostStatusResult } from '@/lib/actions';
 import type { AdminPost, PostStatus } from '@/lib/types';
 
 type ActionVariant = 'primary' | 'secondary' | 'danger';
@@ -55,37 +55,37 @@ type ModalConfig = {
 
 const CONFIRM_REQUIRED = new Set<PostStatus>(['paused', 'archived', 'deleted']);
 
+/** Each confirm label repeats the button that opened it, so the action keeps
+ *  the same name from the trigger through to the confirmation. */
 const MODAL_CONFIG: Record<string, ModalConfig> = {
   paused: {
-    title: '아이템이 일시중지 됩니다',
-    body: '일시중지하시겠습니까?',
-    note: '처리 완료 후 status에 반영됩니다.',
+    title: 'Pause this listing?',
+    body: 'It stops showing in search and browse until someone publishes it again.',
+    note: 'The status updates as soon as the change saves.',
     variant: 'default',
-    confirmLabel: '일시중지',
+    confirmLabel: 'Pause listing',
   },
   archived: {
-    title: '아이템이 숨김처리 됩니다',
-    body: '숨김처리하시겠습니까?',
-    note: '처리 완료 후 status에 반영됩니다.',
+    title: 'Archive this listing?',
+    body: 'It comes off the marketplace and moves to the seller’s archive. You can publish it again later.',
+    note: 'The status updates as soon as the change saves.',
     variant: 'default',
-    confirmLabel: '숨김처리',
+    confirmLabel: 'Archive listing',
   },
   deleted: {
-    title: '아이템이 삭제처리 됩니다',
-    body: '정말 삭제하시겠습니까?',
-    note: '처리 완료 후 status에 반영됩니다.',
+    title: 'Delete this listing?',
+    body: 'This takes the listing off the marketplace for good.',
+    note: 'The status updates as soon as the change saves.',
     variant: 'danger',
-    confirmLabel: '삭제',
+    confirmLabel: 'Delete listing',
   },
 };
 
 const VARIANT_CLASS: Record<ActionVariant, string> = {
-  primary:
-    'w-full rounded-full bg-ink-900 px-4 py-2 text-sm text-center text-white hover:bg-ink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
-  secondary:
-    'w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-center text-ink-700 hover:bg-ink-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
+  primary: 'btn btn-pill-dark w-full',
+  secondary: 'btn btn-pill-ghost w-full',
   danger:
-    'w-full rounded-full border border-red-200 px-4 py-2 text-sm text-center text-danger hover:bg-pink-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
+    'btn w-full rounded-full border border-danger-100 bg-white px-5 py-2 font-medium text-danger-700 hover:border-danger-500 hover:bg-danger-50',
 };
 
 export function ListingActionsCard({ post }: { post: AdminPost }) {
@@ -99,18 +99,28 @@ export function ListingActionsCard({ post }: { post: AdminPost }) {
     if (pendingStatus !== null || next === post.status) return;
     setPendingStatus(next);
     setError(null);
-    try {
-      await updatePostStatus(post.id, next);
-      setConfirmTarget(null);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Status update failed.');
-    } finally {
-      setPendingStatus(null);
+
+    // Deliberately NOT wrapped in try/catch. The Result variant reports
+    // backend failures in its return value, so the only thing it throws is
+    // Next's redirect signal — catching that would swallow the navigation.
+    // The throwing `updatePostStatus` used to surface as an opaque digest in
+    // production instead of the backend's actual message.
+    const result = await updatePostStatusResult(post.id, next);
+    setPendingStatus(null);
+
+    if (!result.ok) {
+      // Leave the modal open so the failure is attached to the action that
+      // caused it, rather than closing and stranding the message behind it.
+      setError(result.error);
+      return;
     }
+
+    setConfirmTarget(null);
+    router.refresh();
   };
 
   const handleActionClick = (next: PostStatus) => {
+    setError(null);
     if (CONFIRM_REQUIRED.has(next)) {
       setConfirmTarget(next);
     } else {
@@ -133,12 +143,10 @@ export function ListingActionsCard({ post }: { post: AdminPost }) {
 
   return (
     <>
-      <section className="card-inner p-6 space-y-5">
+      <section className="card-inner space-y-5 p-5">
         {/* ── Listing status ──────────────────────────────────────────────── */}
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-ink-500 mb-3">
-            Listing Status
-          </p>
+          <p className="label-micro mb-3">Listing Status</p>
           <div className="mb-4">
             <StatusBadge status={post.status} />
           </div>
@@ -155,37 +163,49 @@ export function ListingActionsCard({ post }: { post: AdminPost }) {
               </button>
             ))}
           </div>
-          {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+          {/* When a confirm modal is open the error renders inside it, so it
+              is never shown in two places at once. */}
+          {error && !confirmTarget && (
+            <p role="alert" className="mt-2 text-xs text-danger-700">
+              {error}
+            </p>
+          )}
         </div>
 
         {/* ── Quick actions ───────────────────────────────────────────────── */}
-        <div className="border-t border-ink-100 pt-5 space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-ink-500 mb-3">
-            Quick Actions
-          </p>
+        <div className="space-y-2 border-t border-ink-100 pt-5">
+          <p className="label-micro mb-3">Quick Actions</p>
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-2 w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+            className="btn btn-pill-ghost w-full justify-start"
           >
             {copied ? (
-              <Check size={14} className="shrink-0 text-success" />
+              <Check size={14} strokeWidth={2.2} className="shrink-0 text-success-700" />
             ) : (
-              <Copy size={14} className="shrink-0" />
+              <Copy size={14} strokeWidth={1.9} className="shrink-0 text-ink-400" />
             )}
-            <span className="truncate">
-              {copied ? 'Copied!' : `Copy ID  i${post.id}`}
+            <span className="tnum truncate">
+              {copied ? 'Copied' : `Copy ID  i${post.id}`}
             </span>
           </button>
-          <Link
-            href={`/users/${post.seller.id}`}
-            className="flex items-center justify-center w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
-          >
-            View seller
-          </Link>
+          {/* Anonymised accounts come back with no seller at all, so the
+              listing can outlive the account that posted it. */}
+          {post.seller ? (
+            <Link
+              href={`/users/${post.seller.id}`}
+              className="btn btn-pill-ghost w-full justify-center"
+            >
+              View seller
+            </Link>
+          ) : (
+            <p className="rounded-full border border-dashed border-ink-200 px-5 py-2 text-center text-data text-ink-400">
+              Seller account removed
+            </p>
+          )}
           <Link
             href="/trust-safety?targetType=post"
-            className="flex items-center justify-center w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+            className="btn btn-pill-ghost w-full justify-center"
           >
             View post reports
           </Link>
@@ -201,9 +221,14 @@ export function ListingActionsCard({ post }: { post: AdminPost }) {
           variant={modalConfig.variant}
           confirmLabel={modalConfig.confirmLabel}
           isPending={pendingStatus === confirmTarget}
+          pendingLabel="Saving…"
+          error={error ?? undefined}
           onConfirm={() => executeStatusChange(confirmTarget)}
           onClose={() => {
-            if (pendingStatus === null) setConfirmTarget(null);
+            if (pendingStatus === null) {
+              setConfirmTarget(null);
+              setError(null);
+            }
           }}
         />
       )}

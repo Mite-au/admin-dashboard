@@ -1,159 +1,183 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AlertCircle, ArrowUpRight, CheckCircle2, RotateCcw } from 'lucide-react';
 import { StatusBadge } from '@/components/StatusBadge';
-import { formatDate } from '@/lib/format';
-import { updateReportStatus } from '@/lib/actions';
+import { Card } from '@/components/ui';
+import { formatDateTime, formatRelative } from '@/lib/format';
+import { updateReportStatusResult } from '@/lib/actions';
 import type { AdminReport, AdminReportStatus } from '@/lib/types';
+import { TargetTypeChip, reporterHref, targetHref, targetMeta } from '../ReportTarget';
 
 export function ReportDetailClient({ report }: { report: AdminReport }) {
   const router = useRouter();
-  const [isPending, setIsPending] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const handleStatusChange = async (next: AdminReportStatus) => {
-    if (isPending) return;
-    setIsPending(true);
+  const target = targetHref(report);
+  const reporter = reporterHref(report);
+  const { label: targetLabel } = targetMeta(report.targetType);
+  const isOpen = report.status === 'open';
+
+  const changeStatus = (next: AdminReportStatus) => {
     setError(null);
-    try {
-      await updateReportStatus(report.id, next);
+    startTransition(async () => {
+      const result = await updateReportStatusResult(report.id, next);
+      if (!result.ok) {
+        // The backend's own sentence, next to the button that failed.
+        setError(result.error);
+        return;
+      }
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Status update failed.');
-    } finally {
-      setIsPending(false);
-    }
+    });
   };
 
-  const targetHref =
-    report.targetType === 'post'
-      ? `/listings/${report.targetId}`
-      : `/users/${report.targetId}`;
-
-  const reporterHref = `/users/${report.reporterId}`;
-
   return (
-    <div className="px-8 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* ── Report info card ─────────────────────────────────────────────── */}
-      <section className="card-inner lg:col-span-5 p-6 space-y-6">
-        <h2 className="text-base font-semibold text-ink-900">Report Information</h2>
+    <div className="grid grid-cols-1 gap-6 px-8 pb-8 lg:grid-cols-12">
+      <div className="space-y-6 lg:col-span-7">
+        {/* The subtitle is absolute-only: a relative string in a plain-text
+            prop can't carry `suppressHydrationWarning`, and it would drift
+            between the server render and hydration. */}
+        <Card
+          title="What was reported"
+          subtitle={`Filed ${formatDateTime(report.createdAt)}`}
+          actions={<StatusBadge status={report.status} />}
+        >
+          <div className="space-y-5">
+            <div>
+              <p className="label-micro mb-1.5">Reason</p>
+              <p className="text-[0.9375rem] font-semibold leading-snug text-ink-900">
+                {report.reason || 'No reason was selected.'}
+              </p>
+            </div>
 
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-5 text-sm">
-          <MetaField label="Report ID" value={report.id} />
-          <MetaField label="Type">
-            <span
-              className={
-                'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize ' +
-                (report.targetType === 'post'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'bg-purple-50 text-purple-700')
-              }
+            <div className="rounded-panel bg-ink-50 p-4">
+              <p className="label-micro mb-2">Reporter&rsquo;s description</p>
+              {report.details?.trim() ? (
+                <p className="whitespace-pre-wrap text-data leading-relaxed text-ink-900">
+                  {report.details}
+                </p>
+              ) : (
+                <p className="text-data text-ink-500">
+                  The reporter didn&rsquo;t add anything beyond the reason above.
+                </p>
+              )}
+            </div>
+
+            <dl className="grid grid-cols-1 gap-4 border-t border-ink-100 pt-5 sm:grid-cols-2">
+              <Field label="Report ID">
+                <span className="font-mono text-2xs text-ink-700">{report.id}</span>
+              </Field>
+              <Field label="Reported at">
+                <span suppressHydrationWarning title={formatDateTime(report.createdAt)}>
+                  {formatRelative(report.createdAt)}
+                </span>
+              </Field>
+            </dl>
+          </div>
+        </Card>
+      </div>
+
+      <div className="space-y-6 lg:col-span-5">
+        <Card title="Target" actions={<TargetTypeChip type={report.targetType} />}>
+          <p className="break-words text-data font-medium text-ink-900">
+            {report.targetTitle ?? report.targetId ?? '—'}
+          </p>
+          {report.targetTitle && report.targetId && (
+            <p className="mt-1 font-mono text-2xs text-ink-500">{report.targetId}</p>
+          )}
+          <div className="mt-4">
+            {target ? (
+              <Link href={target} className="btn btn-pill-ghost">
+                Open {targetLabel.toLowerCase()}
+                <ArrowUpRight size={14} strokeWidth={2} aria-hidden="true" />
+              </Link>
+            ) : (
+              <p className="text-data text-ink-500">
+                This target has no admin page to open.
+              </p>
+            )}
+          </div>
+        </Card>
+
+        <Card title="Reporter">
+          <p className="break-words text-data font-medium text-ink-900">
+            {report.reporterName || 'Unknown reporter'}
+          </p>
+          <div className="mt-4">
+            {reporter ? (
+              <Link href={reporter} className="btn btn-pill-ghost">
+                Open reporter
+                <ArrowUpRight size={14} strokeWidth={2} aria-hidden="true" />
+              </Link>
+            ) : (
+              <p className="text-data text-ink-500">This reporter has no linked account.</p>
+            )}
+          </div>
+        </Card>
+
+        <Card
+          title="Resolution"
+          subtitle={
+            isOpen
+              ? 'Resolving records that this report has been dealt with.'
+              : 'Reopen if the same report needs another look.'
+          }
+        >
+          {isOpen ? (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => changeStatus('resolved')}
+              className="btn btn-pill-dark w-full px-5 py-2.5"
             >
-              {report.targetType === 'post' ? 'Post' : 'User'}
-            </span>
-          </MetaField>
-          <MetaField label="Reason" value={report.reason} />
-          <MetaField label="Status">
-            <StatusBadge status={report.status} />
-          </MetaField>
-          <MetaField label="Created At" value={formatDate(report.createdAt)} />
-          <MetaField label="Details" value={report.details ?? '—'} />
-        </dl>
-      </section>
+              <CheckCircle2 size={16} strokeWidth={2} aria-hidden="true" />
+              {isPending ? 'Resolving…' : 'Mark resolved'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => changeStatus('open')}
+              className="btn btn-pill-ghost w-full px-5 py-2.5"
+            >
+              <RotateCcw size={16} strokeWidth={2} aria-hidden="true" />
+              {isPending ? 'Reopening…' : 'Reopen report'}
+            </button>
+          )}
 
-      {/* ── Target + Reporter card ───────────────────────────────────────── */}
-      <section className="card-inner lg:col-span-4 p-6 space-y-6">
-        <div>
-          <h2 className="text-base font-semibold text-ink-900 mb-4">Target</h2>
-          <dl className="grid grid-cols-1 gap-y-4 text-sm">
-            <MetaField label="Type" value={report.targetType === 'post' ? 'Post' : 'User'} />
-            <MetaField label="Title / ID" value={report.targetTitle ?? report.targetId} />
-            <MetaField label="Link">
-              <Link
-                href={targetHref}
-                className="text-brand-600 hover:underline break-all"
-              >
-                {targetHref}
-              </Link>
-            </MetaField>
-          </dl>
-        </div>
+          {error && (
+            <p
+              role="alert"
+              className="mt-3 flex items-start gap-1.5 text-data font-medium text-danger-700"
+            >
+              <AlertCircle
+                size={14}
+                strokeWidth={2}
+                className="mt-0.5 shrink-0"
+                aria-hidden="true"
+              />
+              <span>{error}</span>
+            </p>
+          )}
 
-        <div className="border-t border-ink-100 pt-5">
-          <h2 className="text-base font-semibold text-ink-900 mb-4">Reporter</h2>
-          <dl className="grid grid-cols-1 gap-y-4 text-sm">
-            <MetaField label="Name" value={report.reporterName} />
-            <MetaField label="Link">
-              <Link
-                href={reporterHref}
-                className="text-brand-600 hover:underline break-all"
-              >
-                {reporterHref}
-              </Link>
-            </MetaField>
-          </dl>
-        </div>
-      </section>
-
-      {/* ── Actions card ─────────────────────────────────────────────────── */}
-      <section className="card-inner lg:col-span-3 p-6 space-y-3">
-        <h2 className="text-base font-semibold text-ink-900 mb-4">Actions</h2>
-        <Link
-          href={targetHref}
-          className="block w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-center text-ink-700 hover:bg-ink-50 transition-colors"
-        >
-          View Target
-        </Link>
-        <Link
-          href={reporterHref}
-          className="block w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-center text-ink-700 hover:bg-ink-50 transition-colors"
-        >
-          View Reporter
-        </Link>
-
-        {report.status === 'open' ? (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => handleStatusChange('resolved')}
-            className="block w-full rounded-full bg-ink-900 px-4 py-2 text-sm text-center text-white hover:bg-ink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isPending ? 'Saving…' : 'Resolve'}
-          </button>
-        ) : (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => handleStatusChange('open')}
-            className="block w-full rounded-full border border-ink-200 px-4 py-2 text-sm text-center text-ink-700 hover:bg-ink-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isPending ? 'Saving…' : 'Reopen'}
-          </button>
-        )}
-
-        {error && (
-          <p className="text-xs text-danger text-center">{error}</p>
-        )}
-      </section>
+          <p className="mt-3 text-2xs text-ink-500">
+            Status changes here don&rsquo;t action the {targetLabel.toLowerCase()} itself — do
+            that on its own page.
+          </p>
+        </Card>
+      </div>
     </div>
   );
 }
 
-function MetaField({
-  label,
-  value,
-  children,
-}: {
-  label: string;
-  value?: string;
-  children?: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-ink-500 mb-1">{label}</dt>
-      <dd className="text-sm text-ink-900 break-words">{children ?? value}</dd>
+      <dt className="label-micro">{label}</dt>
+      <dd className="mt-1 break-words text-data text-ink-900">{children}</dd>
     </div>
   );
 }

@@ -17,10 +17,16 @@ function num(v: string | string[] | undefined): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** A hand-edited `?page=abc` must not become `page=NaN` in the API call. */
+function pageParam(v: string | string[] | undefined): number {
+  const n = Number(first(v));
+  return Number.isInteger(n) && n > 0 ? n : 1;
+}
+
 export default async function ThreadsPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const filters: ThreadFilters = {
-    page: Number(first(sp.page) ?? 1),
+    page: pageParam(sp.page),
     name: first(sp.name),
     type: first(sp.type),
     regionCode: first(sp.regionCode),
@@ -34,7 +40,10 @@ export default async function ThreadsPage({ searchParams }: { searchParams: Sear
   return (
     <>
       <Topbar breadcrumbs={[{ label: 'Thread', href: '/threads' }]} />
-      <PageHeader title="Thread" />
+      <PageHeader
+        title="Thread"
+        description="Every community thread, its region and interest wiring, and how much traffic it carries. Threads that predate the region model are marked Legacy."
+      />
       <ThreadsClient data={data} filters={filters} />
     </>
   );

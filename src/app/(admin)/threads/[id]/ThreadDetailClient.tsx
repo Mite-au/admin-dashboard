@@ -1,170 +1,230 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import Image from 'next/image';
+import type { ReactNode } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, MoreVertical } from 'lucide-react';
-import { DetailTabs } from '@/components/DetailTabs';
+import { AlertCircle, MessageSquareText, Users } from 'lucide-react';
 import { StatusBadge } from '@/components/StatusBadge';
-import { Pagination } from '@/components/Pagination';
-import { formatDate, formatNumber } from '@/lib/format';
+import { Card, EmptyState, StatCard } from '@/components/ui';
+import {
+  formatDate,
+  formatDateTime,
+  formatNumber,
+  formatRelative,
+  isImageSrc,
+} from '@/lib/format';
 import {
   formatThreadType,
   getThreadInterestKey,
-  getThreadModelLabel,
   getThreadRegionCode,
   getThreadSuburbCode,
   splitThreadName,
 } from '@/lib/threadModel';
-import { updateThreadStatus } from '@/lib/actions';
+import { updateThreadStatusResult } from '@/lib/actions';
 import type { AdminThreadDetail, ThreadAdminStatus } from '@/lib/types';
+import { CodeChip, ThreadModelChip } from '../ThreadChips';
 
-type TabKey = 'messages' | 'reports' | 'logs';
 const MUTABLE_THREAD_STATUSES = ['active', 'flagged', 'archived', 'hidden'] as const;
-const MUTABLE_THREAD_STATUS_SET = new Set<string>(MUTABLE_THREAD_STATUSES);
+type MutableThreadStatus = (typeof MUTABLE_THREAD_STATUSES)[number];
+
 const THREAD_STATUS_LABELS: Record<MutableThreadStatus, string> = {
   active: 'Active',
   flagged: 'Flagged',
   archived: 'Archived',
   hidden: 'Hidden',
 };
-type MutableThreadStatus = (typeof MUTABLE_THREAD_STATUSES)[number];
+
+const MUTABLE_THREAD_STATUS_SET = new Set<string>(MUTABLE_THREAD_STATUSES);
 
 function isMutableThreadStatus(value: string): value is MutableThreadStatus {
   return MUTABLE_THREAD_STATUS_SET.has(value);
 }
 
 export function ThreadDetailClient({ thread }: { thread: AdminThreadDetail }) {
-  const [tab, setTab] = useState<TabKey>('messages');
   const regionCode = getThreadRegionCode(thread);
   const suburbCode = getThreadSuburbCode(thread);
   const interestKey = getThreadInterestKey(thread);
-  const { topicName, regionName } = splitThreadName(thread.name);
+  const { regionName } = splitThreadName(thread.name);
   const coverImage = thread.coverImage ?? thread.cover_image ?? null;
 
   return (
-    <div className="px-8 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <section className="card-inner lg:col-span-5 p-6 space-y-6">
-        <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-ink-500">Thread</p>
-          <h2 className="text-lg font-semibold text-ink-900">{topicName}</h2>
-          {regionName && <p className="text-sm text-ink-500">{regionName}</p>}
-        </div>
-
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
-          <MetaField label="Thread ID" value={thread.id} />
-          <MetaField label="Name" value={thread.name} />
-          <MetaField label="Model" value={getThreadModelLabel(thread)} />
-          <MetaField label="Raw type" value={formatThreadType(thread.type)} />
-          <MetaField label="Region code" value={regionCode ?? '—'} />
-          <MetaField label="Interest key" value={interestKey ?? '—'} />
-          {suburbCode && <MetaField label="Legacy suburb code" value={suburbCode} />}
-          <MetaField label="Admin status">
-            <ThreadStatusDropdown threadId={thread.id} value={thread.status} />
-          </MetaField>
-          <MetaField label="Current status">
-            <StatusBadge status={thread.status} />
-          </MetaField>
-          <MetaField label="Participants" value={formatNumber(thread.memberCount)} />
-          <MetaField label="Message count" value={formatNumber(thread.messageCount)} />
-          <MetaField label="Created" value={formatDate(thread.createdAt)} />
-          {thread.slug && <MetaField label="Slug" value={thread.slug} />}
-          {coverImage && <MetaField label="Cover image" value={coverImage} />}
-          {thread.lastActiveAt && (
-            <MetaField label="Last active" value={formatDate(thread.lastActiveAt)} />
-          )}
-        </dl>
-
-        {thread.description && (
-          <div className="rounded-xl border border-ink-200 p-4 space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-ink-500">
-              Description
-            </p>
-            <p className="text-sm text-ink-900 whitespace-pre-wrap">{thread.description}</p>
-          </div>
-        )}
-
-        <div className="rounded-xl border border-ink-200 p-4 space-y-3">
-          <p className="text-sm font-medium text-ink-900">Thread summary</p>
-          <p className="text-sm text-ink-700">
-            {formatNumber(thread.memberCount)} participants and {formatNumber(thread.messageCount)}{' '}
-            messages are currently associated with this {getThreadModelLabel(thread).toLowerCase()}{' '}
-            thread{regionCode ? ` in ${regionCode}` : ''}.
-          </p>
-          <Link href="/threads" className="btn btn-pill-dark px-5 py-2 justify-center">
-            Back to threads
-          </Link>
-        </div>
-      </section>
-
-      <section className="card-inner lg:col-span-7 p-6 flex flex-col">
-        <DetailTabs
-          active={tab}
-          onChange={(k) => setTab(k as TabKey)}
-          tabs={[
-            { key: 'messages', label: 'Messages', count: thread.messageCount },
-            { key: 'reports', label: 'Reports' },
-            { key: 'logs', label: 'Logs' },
-          ]}
+    <div className="space-y-6 px-8 pb-8">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Members" value={formatNumber(thread.memberCount)} />
+        <StatCard label="Messages" value={formatNumber(thread.messageCount)} />
+        <StatCard
+          label="Last active"
+          value={thread.lastActiveAt ? formatRelative(thread.lastActiveAt) : '—'}
+          hint={
+            thread.lastActiveAt ? formatDateTime(thread.lastActiveAt) : 'No activity recorded'
+          }
         />
+      </div>
 
-        <div className="pt-5 flex-1">
-          <EmptyTab label="Thread activity" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="space-y-6 lg:col-span-5">
+          <Card title="Identity">
+            {isImageSrc(coverImage) && (
+              <div className="relative mb-5 aspect-[16/7] w-full overflow-hidden rounded-panel bg-ink-100">
+                <Image
+                  src={coverImage}
+                  alt=""
+                  fill
+                  sizes="(min-width: 1024px) 32rem, 100vw"
+                  className="object-cover"
+                />
+              </div>
+            )}
+
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+              <MetaField label="Model">
+                <ThreadModelChip thread={thread} />
+              </MetaField>
+              <MetaField label="Raw type" value={formatThreadType(thread.type)} />
+              <MetaField label="Region code">
+                <CodeChip value={regionCode} />
+              </MetaField>
+              <MetaField label="Interest key">
+                <CodeChip value={interestKey} />
+              </MetaField>
+              {suburbCode && (
+                <MetaField label="Legacy suburb code">
+                  <CodeChip value={suburbCode} />
+                </MetaField>
+              )}
+              <MetaField label="Thread ID">
+                <CodeChip value={thread.id} />
+              </MetaField>
+              {thread.slug && (
+                <MetaField label="Slug">
+                  <CodeChip value={thread.slug} />
+                </MetaField>
+              )}
+              <MetaField label="Created">
+                <span title={formatDateTime(thread.createdAt)}>
+                  {formatDate(thread.createdAt)}
+                </span>
+              </MetaField>
+              <MetaField label="Full name" className="sm:col-span-2" value={thread.name} />
+            </dl>
+
+            <div className="mt-5 border-t border-ink-100 pt-5">
+              <p className="label-micro mb-2">Description</p>
+              {thread.description ? (
+                <p className="whitespace-pre-wrap text-data leading-relaxed text-ink-700">
+                  {thread.description}
+                </p>
+              ) : (
+                <p className="text-data text-ink-400">
+                  No description set — members see the thread name only.
+                </p>
+              )}
+            </div>
+          </Card>
+
+          <ModerationCard threadId={thread.id} status={thread.status} />
         </div>
 
-        <Pagination page={1} totalPages={1} />
-      </section>
+        <div className="space-y-6 lg:col-span-7">
+          <Card
+            title="Members"
+            subtitle={`${formatNumber(thread.memberCount)} joined${regionName ? ` from ${regionName}` : ''}`}
+          >
+            <EmptyState
+              icon={Users}
+              title="Roster not exposed by the admin API"
+              description="The thread returns a member count but not who those members are. To check which threads one person belongs to, filter the thread list by their Member ID."
+            />
+          </Card>
+
+          <Card
+            title="Messages"
+            subtitle={`${formatNumber(thread.messageCount)} sent in this thread`}
+          >
+            <EmptyState
+              icon={MessageSquareText}
+              title="Message history isn't available here"
+              description="Thread contents aren't returned to the admin dashboard. Moderate through the thread's admin status above, or work the reports members have filed."
+              action={
+                <Link href="/trust-safety" className="btn btn-pill-ghost">
+                  Open Trust &amp; Safety
+                </Link>
+              }
+            />
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
 
-function ThreadStatusDropdown({
+/**
+ * The one mutation on this page. Failure is shown next to the control that
+ * caused it, carrying the backend's own sentence — an admin who just tried to
+ * hide a thread needs to know whether it actually happened.
+ */
+function ModerationCard({
   threadId,
-  value,
+  status,
 }: {
   threadId: string;
-  value: ThreadAdminStatus;
+  status: ThreadAdminStatus;
 }) {
   const router = useRouter();
-  const [isPending, setIsPending] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
-  const handleChange = async (newStatus: string) => {
-    if (newStatus === value || isPending) return;
-    if (!isMutableThreadStatus(newStatus)) {
-      alert('Invalid status');
-      return;
-    }
-    setIsPending(true);
-    try {
-      await updateThreadStatus(threadId, newStatus);
+  const handleChange = (raw: string) => {
+    if (raw === status || !isMutableThreadStatus(raw)) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await updateThreadStatusResult(threadId, raw);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       router.refresh();
-    } catch (err) {
-      alert(`Status update failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
-      setIsPending(false);
-    }
+    });
   };
 
   return (
-    <div className="relative inline-flex items-center">
-      <select
-        className="inline-flex items-center rounded-full border border-ink-200 bg-white pl-4 pr-8 py-1.5 text-sm appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        value={value}
-        disabled={isPending}
-        onChange={(e) => handleChange(e.target.value)}
-      >
-        {MUTABLE_THREAD_STATUSES.map((status) => (
-          <option key={status} value={status}>
-            {THREAD_STATUS_LABELS[status]}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        size={14}
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-500"
-      />
-      {isPending && <span className="ml-2 text-[11px] text-ink-500">Saving…</span>}
-    </div>
+    <Card title="Moderation" subtitle="Applies immediately across the app.">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="label-micro">Current</span>
+          <StatusBadge status={status} />
+        </div>
+        {isPending && <span className="text-2xs text-ink-500">Saving…</span>}
+      </div>
+
+      <div className="mt-4">
+        <label htmlFor="thread-admin-status" className="label-micro mb-1.5 block">
+          Change status
+        </label>
+        <select
+          id="thread-admin-status"
+          className="pill-select max-w-xs"
+          value={status}
+          disabled={isPending}
+          onChange={(e) => handleChange(e.target.value)}
+        >
+          {MUTABLE_THREAD_STATUSES.map((option) => (
+            <option key={option} value={option}>
+              {THREAD_STATUS_LABELS[option]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-3 flex items-start gap-1.5 text-data text-danger-700">
+          <AlertCircle size={14} strokeWidth={2} className="mt-0.5 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
+        </p>
+      )}
+    </Card>
   );
 }
 
@@ -172,24 +232,17 @@ function MetaField({
   label,
   value,
   children,
+  className,
 }: {
   label: string;
   value?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div>
-      <dt className="text-ink-500">{label}</dt>
-      <dd className="mt-1 text-ink-900">{children ?? value}</dd>
-    </div>
-  );
-}
-
-function EmptyTab({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-64 text-ink-500 text-sm">
-      <MoreVertical size={20} className="mb-2 opacity-40" />
-      {label} is not wired up yet.
+    <div className={className}>
+      <dt className="label-micro">{label}</dt>
+      <dd className="mt-1 break-words text-data text-ink-900">{children ?? value ?? '—'}</dd>
     </div>
   );
 }

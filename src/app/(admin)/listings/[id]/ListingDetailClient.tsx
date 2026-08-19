@@ -1,18 +1,23 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
-import { Download, MoreVertical, Trash2 } from 'lucide-react';
-import { DetailTabs } from '@/components/DetailTabs';
+import clsx from 'clsx';
+import { History, ImageOff } from 'lucide-react';
 import { ListingActionsCard } from '@/components/ListingActionsCard';
-import { Pagination } from '@/components/Pagination';
 import { SellerCard } from '@/components/SellerCard';
 import { StatusBadge } from '@/components/StatusBadge';
-import { formatDate, formatMoney, isImageSrc } from '@/lib/format';
+import { Card, EmptyState } from '@/components/ui';
+import {
+  formatDate,
+  formatDateTime,
+  formatMoney,
+  formatNumber,
+  formatRelative,
+  isImageSrc,
+} from '@/lib/format';
 import type { AdminPost, AdminUser } from '@/lib/types';
-
-type TabKey = 'transaction' | 'chat' | 'reports' | 'logs';
 
 export function ListingDetailClient({
   post,
@@ -21,94 +26,70 @@ export function ListingDetailClient({
   post: AdminPost;
   seller: AdminUser | null;
 }) {
-  const [tab, setTab] = useState<TabKey>('transaction');
-
   return (
-    <div className="px-8 pb-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* ── Photo gallery + metadata ────────────────────────────────────── */}
-      <section className="card-inner lg:col-span-5 p-6">
-        <div className="grid grid-cols-3 gap-2">
-          {(post.photos?.length ? post.photos : Array(9).fill('')).slice(0, 9).map((src, i) => (
-            <div
-              key={i}
-              className="relative aspect-square rounded-md overflow-hidden bg-ink-100"
-            >
-              {isImageSrc(src) && (
-                <Image
-                  src={src}
-                  alt=""
-                  fill
-                  sizes="(max-width: 768px) 33vw, 16vw"
-                  className="object-cover"
-                />
-              )}
-            </div>
-          ))}
-        </div>
+    <div className="grid grid-cols-1 gap-6 px-8 pb-8 lg:grid-cols-12 lg:items-start">
+      <div className="space-y-6 lg:col-span-8">
+        <Gallery photos={post.photos} title={post.title} />
 
-        <div className="mt-5">
-          <h2 className="text-lg font-semibold">{post.title}</h2>
-          <div className="mt-1 text-xl font-bold">{formatMoney(post.price, post.currency)}</div>
-
-          <dl className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
-            <MetaField label="Category" value={post.category} />
-            <MetaField label="Status">
-              <StatusBadge status={post.status} />
-            </MetaField>
-            <MetaField label="Item ID" value={`i${post.id}`} />
-            <MetaField label="Created" value={formatDate(post.createdAt)} />
-            <MetaField label="Condition">
-              <span className="capitalize">{post.condition?.replace('-', ' ') ?? '—'}</span>
-            </MetaField>
-            <MetaField label="Seller">
-              {post.seller ? (
-                <Link href={`/users/${post.seller.id}`} className="hover:underline">
-                  {post.seller.name}
-                </Link>
-              ) : (
-                '—'
-              )}
-            </MetaField>
-          </dl>
-        </div>
-      </section>
-
-      {/* ── Tabbed activity panel ───────────────────────────────────────── */}
-      <section className="card-inner lg:col-span-4 p-6 flex flex-col">
-        <DetailTabs
-          active={tab}
-          onChange={(k) => setTab(k as TabKey)}
-          tabs={[
-            { key: 'transaction', label: 'Transaction' },
-            { key: 'chat', label: 'Chat' },
-            { key: 'reports', label: 'Reports', count: post.reportsCount },
-            { key: 'logs', label: 'Logs' },
-          ]}
-        />
-
-        <div className="flex items-center gap-3 pt-5">
-          <input className="pill-input max-w-sm" placeholder="Keywords" />
-          <button className="btn btn-pill-dark px-6">search</button>
-
-          <div className="ml-auto flex items-center gap-2">
-            <button className="btn-icon">
-              <Trash2 size={14} /> Delete
-            </button>
-            <button className="btn-icon">
-              <Download size={14} /> Export CSV
-            </button>
+        <Card title="Item details">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="tnum text-display font-bold text-ink-900">
+              {formatMoney(post.price, post.currency)}
+            </p>
+            <StatusBadge status={post.status} />
           </div>
-        </div>
 
-        <div className="pt-5 flex-1">
-          <EmptyTab label="Activity" />
-        </div>
+          <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3">
+            <Fact label="Item ID" value={`i${post.id}`} numeric />
+            <Fact label="Category" value={post.category || '—'} />
+            <Fact label="Condition" value={formatCondition(post.condition)} capitalize />
+            <Fact
+              label="Listed"
+              value={formatDate(post.createdAt)}
+              hint={formatRelative(post.createdAt)}
+              title={formatDateTime(post.createdAt)}
+            />
+            <div className="min-w-0">
+              <dt className="label-micro">Seller</dt>
+              <dd className="mt-1 truncate text-data text-ink-900">
+                {post.seller?.id ? (
+                  <Link
+                    href={`/users/${post.seller.id}`}
+                    className="rounded-sm hover:text-brand-600 hover:underline"
+                  >
+                    {post.seller.name || `m${post.seller.id}`}
+                  </Link>
+                ) : (
+                  'Account unavailable'
+                )}
+              </dd>
+            </div>
+            <Fact label="Reports" value={formatNumber(post.reportsCount)} numeric />
+          </dl>
 
-        <Pagination page={1} totalPages={1} />
-      </section>
+          <div className="mt-5 border-t border-ink-100 pt-4">
+            <p className="label-micro">Description</p>
+            <p className="mt-1.5 whitespace-pre-wrap break-words text-data leading-relaxed text-ink-700">
+              {post.description?.trim() || 'No description was written for this listing.'}
+            </p>
+          </div>
+        </Card>
 
-      {/* ── Actions + Seller column ─────────────────────────────────────── */}
-      <div className="lg:col-span-3 flex flex-col gap-6">
+        <Card title="History">
+          <EmptyState
+            icon={History}
+            title="No transaction or message history"
+            description="Per-listing orders and chat aren't exposed by the admin API yet. Reports filed against items are on the Trust & safety page."
+            action={
+              <Link href="/trust-safety?targetType=post" className="btn btn-pill-ghost">
+                View post reports
+              </Link>
+            }
+          />
+        </Card>
+      </div>
+
+      <div className="flex flex-col gap-6 lg:col-span-4">
         <ListingActionsCard post={post} />
         <SellerCard seller={seller} />
       </div>
@@ -116,28 +97,104 @@ export function ListingDetailClient({
   );
 }
 
-function MetaField({
-  label,
-  value,
-  children,
-}: {
-  label: string;
-  value?: string;
-  children?: React.ReactNode;
-}) {
+function formatCondition(condition: string | null | undefined) {
+  if (!condition) return '—';
+  return condition.replace(/[_-]/g, ' ');
+}
+
+/**
+ * Photo review: one large frame plus a thumbnail strip.
+ *
+ * `object-contain` on a sunken backdrop rather than `object-cover` — an admin
+ * checking a listing needs the whole frame, including whatever is at the
+ * edges of it.
+ */
+function Gallery({ photos, title }: { photos: string[] | undefined; title: string }) {
+  const images = (photos ?? []).filter(isImageSrc);
+  const [active, setActive] = useState(0);
+
+  if (images.length === 0) {
+    return (
+      <Card bleed>
+        <EmptyState
+          icon={ImageOff}
+          title="No photos on this listing"
+          description="The seller published this item without usable images, or the uploads are still processing."
+        />
+      </Card>
+    );
+  }
+
+  const current = images[Math.min(active, images.length - 1)];
+
   return (
-    <div>
-      <dt className="text-ink-500">{label}</dt>
-      <dd className="mt-1 text-ink-900">{children ?? value}</dd>
-    </div>
+    <Card bleed>
+      <div className="relative aspect-[4/3] w-full bg-ink-50">
+        <Image
+          key={current}
+          src={current}
+          alt={title ? `${title} — photo ${active + 1}` : `Listing photo ${active + 1}`}
+          fill
+          sizes="(max-width: 1024px) 100vw, 60vw"
+          className="object-contain"
+          priority
+        />
+      </div>
+
+      {images.length > 1 && (
+        <div className="scroll-slim flex gap-2 overflow-x-auto border-t border-ink-100 p-3">
+          {images.map((src, i) => (
+            <button
+              key={src}
+              type="button"
+              aria-label={`Show photo ${i + 1} of ${images.length}`}
+              aria-pressed={i === active}
+              onClick={() => setActive(i)}
+              className={clsx(
+                'relative h-14 w-14 shrink-0 overflow-hidden rounded-control bg-ink-50 transition-shadow',
+                i === active
+                  ? 'ring-2 ring-ink-900'
+                  : 'ring-1 ring-ink-200 hover:ring-ink-300',
+              )}
+            >
+              <Image src={src} alt="" fill sizes="56px" className="object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 
-function EmptyTab({ label }: { label: string }) {
+function Fact({
+  label,
+  value,
+  hint,
+  title,
+  numeric,
+  capitalize,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  title?: string;
+  numeric?: boolean;
+  capitalize?: boolean;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center h-64 text-ink-500 text-sm">
-      <MoreVertical size={20} className="mb-2 opacity-40" />
-      {label} is not wired up yet.
+    <div className="min-w-0">
+      <dt className="label-micro">{label}</dt>
+      <dd
+        title={title}
+        className={clsx(
+          'mt-1 break-words text-data text-ink-900',
+          numeric && 'tnum',
+          capitalize && 'capitalize',
+        )}
+      >
+        {value}
+        {hint && <span className="ml-1.5 text-ink-500">({hint})</span>}
+      </dd>
     </div>
   );
 }

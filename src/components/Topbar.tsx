@@ -1,35 +1,72 @@
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { ChevronRight, Home, LogOut } from 'lucide-react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 
 export type Breadcrumb = { label: string; href: string };
 
+/**
+ * The content shell's masthead: a fixed 56px toolbar closed by a hairline,
+ * which is what gives every page the same three-band rhythm
+ * (toolbar / title / content).
+ *
+ * The "MITE Admin" wordmark lives in the sidebar now, so the crumbs start
+ * from a home affordance instead of repeating it.
+ */
 export async function Topbar({ breadcrumbs }: { breadcrumbs: Breadcrumb[] }) {
   const account = await getAccountLabel();
-  return (
-    <header className="flex items-center justify-between px-8 pt-7 pb-5">
-      <div className="flex items-center gap-3 text-sm font-medium">
-        <Link href="/users" className="text-brand-600 font-bold tracking-wide hover:underline">
-          MITE Admin
-        </Link>
-        {breadcrumbs.map((b, i) => (
-          <span key={i} className="flex items-center gap-3 text-ink-700">
-            <span className="text-ink-300">/</span>
-            <Link href={b.href} className="hover:underline">
-              {b.label}
-            </Link>
-          </span>
-        ))}
-      </div>
+  const initial = account.trim().charAt(0).toUpperCase() || 'A';
 
-      <div className="flex items-center gap-3 text-sm">
-        <span className="inline-flex items-center gap-2 text-ink-900">
-          <UserIcon size={16} strokeWidth={1.75} />
-          {account}
+  return (
+    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-ink-100 px-8">
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1">
+        <Link
+          href="/overview"
+          aria-label="Overview"
+          className="flex h-7 w-7 items-center justify-center rounded-control text-ink-400
+                     transition-colors hover:bg-ink-50 hover:text-ink-700"
+        >
+          <Home size={15} strokeWidth={1.85} />
+        </Link>
+        {breadcrumbs.map((b, i) => {
+          const isLast = i === breadcrumbs.length - 1;
+          return (
+            <span key={`${b.href}-${i}`} className="flex min-w-0 items-center gap-1">
+              <ChevronRight size={14} strokeWidth={2} className="shrink-0 text-ink-300" />
+              <Link
+                href={b.href}
+                aria-current={isLast ? 'page' : undefined}
+                className={
+                  isLast
+                    ? 'truncate rounded px-1.5 py-0.5 text-sm font-semibold text-ink-900'
+                    : 'truncate rounded px-1.5 py-0.5 text-sm font-medium text-ink-500 transition-colors hover:text-ink-900'
+                }
+              >
+                {b.label}
+              </Link>
+            </span>
+          );
+        })}
+      </nav>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <span
+          className="hidden items-center gap-2 rounded-full border border-ink-200 bg-white py-1 pl-1 pr-3 sm:inline-flex"
+          title={account}
+        >
+          <span
+            aria-hidden="true"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-ink-100 text-[11px] font-bold text-ink-700"
+          >
+            {initial}
+          </span>
+          <span className="max-w-[16rem] truncate text-data font-medium text-ink-700">
+            {account}
+          </span>
         </span>
+
         <form action="/api/logout" method="post">
-          <button className="inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 py-1.5 text-ink-700 hover:bg-ink-50">
-            <LogOut size={14} />
+          <button type="submit" className="btn-icon">
+            <LogOut size={14} strokeWidth={1.9} />
             Sign out
           </button>
         </form>

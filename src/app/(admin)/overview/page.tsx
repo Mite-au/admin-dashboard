@@ -1,8 +1,9 @@
-import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
+import { Topbar } from '@/components/Topbar';
 import {
   getActivityOverview,
   getChatOverview,
+  getEngagementActivity,
   getEngagementSummary,
   getListingsOverview,
   getOverview,
@@ -12,43 +13,20 @@ import {
   optional,
 } from '@/lib/fetchers';
 import { resolvePeriodFromRecord } from '@/lib/period';
-import type { EngagementSummary, OverviewStats } from '@/lib/types';
 import { OverviewTabLayout } from './OverviewTabLayout';
+import { resolveSection, resolveTab } from './tabs';
+
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 /**
- * The card and chart renderers read `section.totals.*` and
- * `section.activityByDay.map(...)` without guards, so a payload that's missing
- * either one crashes the whole page. Drop partial sections instead — the
- * layout already has a "not wired" state for a null section.
+ * Every fetcher normalises at its boundary, so the shapes below are runtime
+ * guarantees and need no page-side checking. `optional` is a different job: it
+ * covers a request that never returned at all, which no amount of
+ * normalisation can fill in — a null section renders its own failure notice
+ * rather than taking the other eight down with it.
  */
-function usable<T extends { totals?: unknown; activityByDay?: unknown }>(
-  section: T | null,
-): T | null {
-  if (!section) return null;
-  const hasTotals = typeof section.totals === 'object' && section.totals !== null;
-  return hasTotals && Array.isArray(section.activityByDay) ? section : null;
-}
-
-/** EngagementSummary is flat, so it needs its own shape check. */
-function usableSummary(summary: EngagementSummary | null): EngagementSummary | null {
-  return summary && typeof summary.activeUsers === 'number' ? summary : null;
-}
-
-/** `getOverview` is the one fatal fetch — fill in anything it left out. */
-function normaliseOverview(raw: OverviewStats): OverviewStats {
-  const totals = (raw?.totals ?? {}) as Partial<OverviewStats['totals']>;
-  return {
-    activityByDay: Array.isArray(raw?.activityByDay) ? raw.activityByDay : [],
-    totals: {
-      users: totals.users ?? 0,
-      verifiedUsers: totals.verifiedUsers ?? 0,
-      activeListings: totals.activeListings ?? 0,
-      openReports: totals.openReports ?? 0,
-      soldPosts: totals.soldPosts,
-    },
-  };
-}
-
 export default async function OverviewPage({
   searchParams,
 }: {
@@ -58,11 +36,15 @@ export default async function OverviewPage({
   const { from, to } = resolvePeriodFromRecord(rawParams);
   const period = { from, to };
 
+  const tab = resolveTab(first(rawParams.tab));
+  const section = resolveSection(tab, first(rawParams.section));
+
   const [
     overview,
     chatOverview,
     threadsOverview,
     engagementSummary,
+    engagementActivity,
     reportsOverview,
     transactionsOverview,
     listingsOverview,
@@ -72,6 +54,7 @@ export default async function OverviewPage({
     optional(getChatOverview(period)),
     optional(getThreadsOverview(period)),
     optional(getEngagementSummary(period)),
+    optional(getEngagementActivity(period)),
     optional(getReportsOverview(period)),
     optional(getTransactionsOverview(period)),
     optional(getListingsOverview(period)),
@@ -81,16 +64,23 @@ export default async function OverviewPage({
   return (
     <>
       <Topbar breadcrumbs={[{ label: 'Overview', href: '/overview' }]} />
-      <PageHeader title="Overview" />
+      <PageHeader
+        title="Overview"
+        description="Marketplace and engagement health for the selected period, compared against the period before it."
+      />
       <OverviewTabLayout
-        data={normaliseOverview(overview)}
-        chatOverview={usable(chatOverview)}
-        threadsOverview={usable(threadsOverview)}
-        engagementSummary={usableSummary(engagementSummary)}
-        reportsOverview={usable(reportsOverview)}
-        transactionsOverview={usable(transactionsOverview)}
-        listingsOverview={usable(listingsOverview)}
-        activityOverview={usable(activityOverview)}
+        period={period}
+        initialTab={tab}
+        initialSection={section}
+        overview={overview}
+        chatOverview={chatOverview}
+        threadsOverview={threadsOverview}
+        engagementSummary={engagementSummary}
+        engagementActivity={engagementActivity}
+        reportsOverview={reportsOverview}
+        transactionsOverview={transactionsOverview}
+        listingsOverview={listingsOverview}
+        activityOverview={activityOverview}
       />
     </>
   );

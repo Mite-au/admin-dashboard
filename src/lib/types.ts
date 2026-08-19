@@ -47,6 +47,21 @@ export interface AdminUser {
   totalSales?: number | null;
 }
 
+/**
+ * Outcome of a mutation Server Action that reports failure by returning
+ * rather than throwing.
+ *
+ * Next.js replaces any error thrown out of a Server Action with an opaque
+ * digest in a production build, so the backend's message — the part an admin
+ * can actually act on ("user has no phone number on file") — never reaches
+ * the client. A returned value crosses that boundary intact.
+ *
+ * Lives here rather than in `actions.ts` because a `'use server'` module may
+ * only export async functions. `export type` is erased before that check
+ * runs, but keeping the type out of there entirely removes the question.
+ */
+export type ActionResult = { ok: true } | { ok: false; error: string };
+
 /** Response of PATCH /admin/users/:id/contact-verification. */
 export interface ContactVerificationResult {
   id: string;
@@ -54,6 +69,11 @@ export interface ContactVerificationResult {
   phone: string | null;
   emailVerified: boolean;
   phoneVerified: boolean;
+}
+
+export interface AdminPostSeller {
+  id: string;
+  name: string;
 }
 
 export interface AdminPost {
@@ -65,7 +85,19 @@ export interface AdminPost {
   category: string;
   condition: string;
   status: PostStatus;
-  seller: { id: string; name: string };
+  /**
+   * Absent for anonymised accounts — the backend drops the seller rather than
+   * returning a tombstone, so a listing can outlive the account that posted
+   * it. Both wire forms occur (the key omitted entirely, or an explicit
+   * `null`), hence optional AND nullable: a DTO mapper that assigns
+   * `undefined` loses the key to `JSON.stringify`, while a Prisma relation
+   * that came back empty serialises as `null`.
+   *
+   * Reach for `post.seller?.id` — it handles both, and this used to be typed
+   * as required, which is how `ListingActionsCard` ended up dereferencing it
+   * straight into a crash.
+   */
+  seller?: AdminPostSeller | null;
   createdAt: string;
   photos: string[];
   reportsCount: number;
@@ -229,16 +261,50 @@ export interface AdminReport {
   createdAt: string;
 }
 
+// ── Analytics payloads ──────────────────────────────────────────────────
+//
+// Unit convention, enforced by the normalisers in `fetchers.ts`: every field
+// named `*Rate` is a FRACTION in 0..1 (`0.124` = 12.4%). Only formatters
+// multiply by 100. Every `*Count` / `*Users` field is a whole non-negative
+// number; money fields (`gmv`, `*Volume`) are in whole AUD, not cents, and
+// may be negative once refunds are netted off.
+//
+// `previousTotals` is optional on the section payloads and stays absent when
+// the backend didn't send a comparison — undefined means "no comparison
+// available" (hide the delta chip), which is not the same claim as an
+// all-zero previous period. `SearchGapsResponse.previousTotals` is the one
+// exception: it is required and always populated.
+//
+// `activityByDay` is always present and sorted ascending by `date`, and every
+// value in a point is a `string` or `number` — the chart row type is
+// `{ date: string } & Record<string, string | number>`, and the per-day key
+// names are passed to recharts as untyped `dataKey` strings, so renaming one
+// breaks a chart silently.
+//
+// The `*Point` shapes below are `type` aliases, not interfaces, and must stay
+// that way: TypeScript only infers an implicit index signature for type
+// aliases, so an interface here fails to satisfy the chart's
+// `Record<string, string | number>` row constraint. Converting one back to an
+// `interface` breaks every ChartPanel it feeds.
+
+export type OverviewActivityPoint = {
+  date: string;
+  listings: number;
+};
+
+export interface OverviewTotals {
+  users: number;
+  verifiedUsers: number;
+  activeListings: number;
+  openReports: number;
+  /** Posts with status=sold. Proxy only — not a confirmed transaction count.
+   *  Absent (not 0) when the backend doesn't compute it. */
+  soldPosts?: number;
+}
+
 export interface OverviewStats {
-  activityByDay: { date: string; listings: number }[];
-  totals: {
-    users: number;
-    verifiedUsers: number;
-    activeListings: number;
-    openReports: number;
-    /** Posts with status=sold. Proxy only — not a confirmed transaction count. */
-    soldPosts?: number;
-  };
+  activityByDay: OverviewActivityPoint[];
+  totals: OverviewTotals;
 }
 
 export interface EngagementSummary {
@@ -250,138 +316,164 @@ export interface EngagementSummary {
   threadActiveUsers: number;
 }
 
-export interface EngagementActivityPoint {
+export type EngagementActivityPoint = {
   date: string;
   chats: number;
   /** DM + thread messages combined. */
   messages: number;
   threadActivity: number;
-}
+};
 
 export interface EngagementActivity {
   activityByDay: EngagementActivityPoint[];
 }
 
-export interface ChatOverview {
-  totals: {
-    chatButtonClicks: number;
-    chatStartedCount: number;
-    /** DM user text messages only. */
-    messageSentCount: number;
-    listingToChatStartRate: number;
-  };
-  previousTotals?: {
-    chatButtonClicks: number;
-    chatStartedCount: number;
-    messageSentCount: number;
-    listingToChatStartRate: number;
-  };
-  activityByDay: {
-    date: string;
-    chatButtonClicks: number;
-    chatStarted: number;
-    /** DM user text messages only. */
-    messagesSent: number;
-  }[];
+export interface ChatOverviewTotals {
+  chatButtonClicks: number;
+  chatStartedCount: number;
+  /** DM user text messages only. */
+  messageSentCount: number;
+  /** Fraction 0..1. */
+  listingToChatStartRate: number;
 }
+
+export type ChatActivityPoint = {
+  date: string;
+  chatButtonClicks: number;
+  chatStarted: number;
+  /** DM user text messages only. */
+  messagesSent: number;
+};
+
+export interface ChatOverview {
+  totals: ChatOverviewTotals;
+  previousTotals?: ChatOverviewTotals;
+  activityByDay: ChatActivityPoint[];
+}
+
+export interface ThreadsOverviewTotals {
+  threadOpenCount: number;
+  threadJoinCount: number;
+  threadActiveUsers: number;
+}
+
+export type ThreadsActivityPoint = {
+  date: string;
+  threadOpens: number;
+  threadJoins: number;
+  threadActivity: number;
+};
 
 export interface ThreadsOverview {
-  totals: {
-    threadOpenCount: number;
-    threadJoinCount: number;
-    threadActiveUsers: number;
-  };
-  previousTotals?: {
-    threadOpenCount: number;
-    threadJoinCount: number;
-    threadActiveUsers: number;
-  };
-  activityByDay: {
-    date: string;
-    threadOpens: number;
-    threadJoins: number;
-    threadActivity: number;
-  }[];
+  totals: ThreadsOverviewTotals;
+  previousTotals?: ThreadsOverviewTotals;
+  activityByDay: ThreadsActivityPoint[];
 }
+
+export interface ReportsOverviewTotals {
+  /** Point-in-time backlog, not a period flow — hence absent from the
+   *  comparison object below. */
+  openReports: number;
+  reportsCreatedCount: number;
+  resolvedReportsCount: number;
+}
+
+export interface ReportsOverviewPreviousTotals {
+  reportsCreatedCount: number;
+  resolvedReportsCount: number;
+}
+
+export type ReportsActivityPoint = {
+  date: string;
+  reportsCreated: number;
+  reportsResolved: number;
+};
 
 export interface ReportsOverview {
-  totals: {
-    openReports: number;
-    reportsCreatedCount: number;
-    resolvedReportsCount: number;
-  };
-  previousTotals?: {
-    reportsCreatedCount: number;
-    resolvedReportsCount: number;
-  };
-  activityByDay: {
-    date: string;
-    reportsCreated: number;
-    reportsResolved: number;
-  }[];
+  totals: ReportsOverviewTotals;
+  previousTotals?: ReportsOverviewPreviousTotals;
+  activityByDay: ReportsActivityPoint[];
 }
+
+export interface TransactionsOverviewTotals {
+  confirmedTransactionCount: number;
+  /** Whole AUD. Can go negative once refunds are netted off. */
+  confirmedTransactionVolume: number;
+  /** Whole AUD. */
+  gmv: number;
+}
+
+export type TransactionsActivityPoint = {
+  date: string;
+  confirmedTransactionCount: number;
+  confirmedTransactionVolume: number;
+  gmv: number;
+};
 
 export interface TransactionsOverview {
-  totals: {
-    confirmedTransactionCount: number;
-    confirmedTransactionVolume: number;
-    gmv: number;
-  };
-  previousTotals?: {
-    confirmedTransactionCount: number;
-    confirmedTransactionVolume: number;
-    gmv: number;
-  };
-  activityByDay: {
-    date: string;
-    confirmedTransactionCount: number;
-    confirmedTransactionVolume: number;
-    gmv: number;
-  }[];
+  totals: TransactionsOverviewTotals;
+  previousTotals?: TransactionsOverviewTotals;
+  activityByDay: TransactionsActivityPoint[];
 }
+
+export interface ListingsOverviewTotals {
+  listingPublishedCount: number;
+  /** Fraction 0..1. */
+  firstListingRate: number;
+  totalListingDetailViews: number;
+  listingStartedCount: number;
+  listingCreateClickedCount: number;
+  repeatListingUserCount: number;
+}
+
+/** `totalListingDetailViews` has no period-over-period counterpart. */
+export interface ListingsOverviewPreviousTotals {
+  listingPublishedCount: number;
+  /** Fraction 0..1. */
+  firstListingRate: number;
+  listingStartedCount: number;
+  listingCreateClickedCount: number;
+  repeatListingUserCount: number;
+}
+
+export type ListingsActivityPoint = {
+  date: string;
+  listingStarted: number;
+  listingCreateClicked: number;
+  listings: number;
+  listingsPublished: number;
+};
 
 export interface ListingsOverview {
-  totals: {
-    listingPublishedCount: number;
-    firstListingRate: number;
-    totalListingDetailViews: number;
-    listingStartedCount: number;
-    listingCreateClickedCount: number;
-    repeatListingUserCount: number;
-  };
-  previousTotals?: {
-    listingPublishedCount: number;
-    firstListingRate: number;
-    listingStartedCount: number;
-    listingCreateClickedCount: number;
-    repeatListingUserCount: number;
-  };
-  activityByDay: {
-    date: string;
-    listingStarted: number;
-    listingCreateClicked: number;
-    listings: number;
-    listingsPublished: number;
-  }[];
+  totals: ListingsOverviewTotals;
+  previousTotals?: ListingsOverviewPreviousTotals;
+  activityByDay: ListingsActivityPoint[];
 }
 
+export interface ActivityOverviewTotals {
+  signUpCount: number;
+  /** Running total, not a period flow. */
+  verifiedUsers: number;
+  weeklyReturningVerifiedUsers: number;
+  emailVerifiedCount: number;
+  phoneVerifiedCount: number;
+}
+
+export interface ActivityOverviewPreviousTotals {
+  /** Only period KPIs are comparable across periods. */
+  signUpCount: number;
+}
+
+export type ActivityOverviewPoint = {
+  date: string;
+  signUps: number;
+  verifiedUsers: number;
+};
+
 export interface ActivityOverview {
-  totals: {
-    signUpCount: number;
-    verifiedUsers: number;
-    weeklyReturningVerifiedUsers: number;
-    emailVerifiedCount: number;
-    phoneVerifiedCount: number;
-  };
-  previousTotals?: {
-    /** Only period KPIs are comparable across periods. */
-    signUpCount: number;
-  };
-  activityByDay: {
-    date: string;
-    signUps: number;
-    verifiedUsers: number;
-  }[];
+  totals: ActivityOverviewTotals;
+  previousTotals?: ActivityOverviewPreviousTotals;
+  activityByDay: ActivityOverviewPoint[];
 }
 
 export type WeeklyMetricUnit = 'count' | 'rate';
@@ -416,11 +508,12 @@ export interface WeeklyMetricsResponse {
 
 export type UserLoginMethod = 'email' | 'phone' | 'google' | 'unknown';
 
-export interface DailyLoginPoint {
+/** Type alias, not an interface — see the note above on chart row typing. */
+export type DailyLoginPoint = {
   date: string;
   logins: number;
   uniqueUsers: number;
-}
+};
 
 export interface LoginMethodBreakdown {
   email: number;

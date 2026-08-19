@@ -4,7 +4,12 @@ import { Download } from 'lucide-react';
 
 export type CsvColumn = { key: string; label: string };
 
-/** CSV 변환 + BOM 다운로드 유틸 — 클라이언트 전용 */
+/**
+ * Serialises rows to CSV and triggers a download. Client-only.
+ *
+ * The leading U+FEFF byte-order mark is what makes Excel read the file as
+ * UTF-8 — without it, non-ASCII names in the export come out mojibake.
+ */
 export function exportToCsv(
   data: Record<string, unknown>[],
   columns: CsvColumn[],
@@ -29,8 +34,9 @@ export function exportToCsv(
 }
 
 /**
- * 독립 버튼으로 쓸 때 사용.
- * SearchCard의 onExport 슬롯과 스타일을 통일한다.
+ * Standalone export button, for pages that have no SearchCard. Shares the
+ * `btn-icon` treatment with SearchCard's own export slot so the two read as
+ * the same control wherever they appear.
  */
 export function ExportCsvButton({
   data,
@@ -45,9 +51,9 @@ export function ExportCsvButton({
     <button
       type="button"
       onClick={() => exportToCsv(data, columns, filename)}
-      className="inline-flex items-center gap-1.5 rounded-md bg-ink-50 border border-ink-200 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-100"
+      className="btn-icon"
     >
-      <Download size={14} />
+      <Download size={14} strokeWidth={1.9} />
       Export CSV
     </button>
   );

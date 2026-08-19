@@ -1,10 +1,16 @@
 import clsx from 'clsx';
 
+/**
+ * Maps a backend status string onto one of the four pill variants. The pill
+ * renders a dot in front of the label (the dot inherits `currentColor`, so it
+ * follows the variant automatically) — colour alone never carries the meaning.
+ */
 const map: Record<string, string> = {
   // User statuses (real DB enum values + synthetic `banned`)
   active: 'pill-success',
-  suspended: 'pill-danger',
-  banned: 'pill-neutral',
+  // Severity ladder: suspended is reversible, banned is not.
+  suspended: 'pill-warning',
+  banned: 'pill-danger',
   pending_profile: 'pill-warning',
   'pending profile': 'pill-warning',
   deleted: 'pill-neutral',
@@ -42,17 +48,20 @@ const map: Record<string, string> = {
   flagged: 'pill-warning',
   hidden: 'pill-neutral',
 
-  // Auth log statuses
+  // Auth log statuses — a successful login is not a "good" state worth green,
+  // it is the expected one.
   success: 'pill-neutral',
 };
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({
+  status,
+  className,
+}: {
+  status: string;
+  className?: string;
+}) {
   const key = status.toLowerCase().replace('-', ' ');
   const cls = map[key] ?? map[status.toLowerCase()] ?? 'pill-neutral';
   const label = status.replace(/[_-]/g, ' ').toLowerCase();
-  return (
-    <span className={clsx('pill-status capitalize', cls)}>
-      {label}
-    </span>
-  );
+  return <span className={clsx('pill-status capitalize', cls, className)}>{label}</span>;
 }

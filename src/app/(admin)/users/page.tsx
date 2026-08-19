@@ -2,6 +2,7 @@ import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
 import { getUsers, type UserFilters } from '@/lib/fetchers';
 import { UsersClient } from './UsersClient';
+import { UsersExportButton } from './UsersExportButton';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -24,8 +25,12 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
 
   return (
     <>
-      <Topbar breadcrumbs={[{ label: 'User', href: '/users' }]} />
-      <PageHeader title="User" />
+      <Topbar breadcrumbs={[{ label: 'Users', href: '/users' }]} />
+      <PageHeader
+        title="Users"
+        description="Every registered account, with verification state and standing. Open a row for the full record and the moderation controls."
+        actions={<UsersExportButton users={data.items} />}
+      />
       <UsersClient data={data} filters={filters} />
     </>
   );

@@ -2,68 +2,350 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body { height: 100%; }
-body { @apply bg-page text-ink-900 antialiased; }
+/* ═══════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   Colors are stored as space-separated RGB channels rather than hex so that
+   Tailwind's `<alpha-value>` slot works (`bg-ink-50/60`, `ring-brand-500/30`).
+   Hex equivalents are in the trailing comment on each line.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* ── Surfaces ─────────────────────────────────────────────────────── */
+  --canvas:          242 239 236; /* #f2efec — warm-neutral ground the cards float on */
+  --surface:         255 255 255; /* #ffffff — card faces */
+  --surface-sunken:  248 246 244; /* #f8f6f4 — inset tracks, table headers, hover fills */
 
-@keyframes skeleton-shimmer {
-  100% {
-    transform: translateX(100%);
+  /* ── Ink (warm-neutral gray ramp, tuned to sit under the coral) ───── */
+  --ink-900: 26 22 20;    /* #1a1614 — headings, primary buttons     18.2:1 */
+  --ink-800: 43 36 34;    /* #2b2422 — dark fills                    14.1:1 */
+  --ink-700: 74 66 62;    /* #4a423e — body text                      9.8:1 */
+  --ink-600: 95 86 81;    /* #5f5651 — secondary body                 7.2:1 */
+  --ink-500: 122 112 107; /* #7a706b — labels, muted text             4.8:1 AA */
+  --ink-400: 148 138 133; /* #948a85 — placeholders, disabled         3.4:1 */
+  --ink-300: 196 187 181; /* #c4bbb5 — strong dividers, icon strokes */
+  --ink-200: 227 221 216; /* #e3ddd8 — control borders */
+  --ink-100: 239 234 230; /* #efeae6 — hairlines, row rules */
+  --ink-50:  248 246 244; /* #f8f6f4 — subtle fills */
+
+  /* ── Brand ────────────────────────────────────────────────────────── */
+  /* Derived from #ff4f40 — the flat ink sampled from the real Mite logo
+     artwork in public/brand/. The ramp holds the logo's own hue (hsl 4.7°);
+     the dark grades drop to 75% saturation so they read as a deep coral
+     rather than a neon red.
+
+     500 is the identity and is FILL-ONLY (3.3:1 — never as text, and never
+     put white text on it; ink-900 on brand-500 is 5.5:1 and is fine).
+     600 is the lowest grade clearing AA as text on BOTH white and the
+     canvas, so it is the text/focus-ring grade. */
+  --brand-50:  255 243 241; /* #fff3f1 — tint; keyline on it clears 3.0:1  */
+  --brand-100: 255 221 217; /* #ffddd9 */
+  --brand-200: 255 188 181; /* #ffbcb5 */
+  --brand-400: 255 124 112; /* #ff7c70 */
+  --brand-500: 255 79 64;   /* #ff4f40 — THE logo ink, active keyline  fill only */
+  --brand-600: 206 47 29;   /* #ce2f1d — brand text + focus rings  5.2:1 / 4.5:1 AA */
+  --brand-700: 179 41 25;   /* #b32919 — high-emphasis brand text        6.5:1 AA */
+
+  /* ── Status (semantic anchors shared with the charts layer) ───────── */
+  --success-50:  236 253 245; /* #ecfdf5 */
+  --success-100: 209 250 229; /* #d1fae5 */
+  --success-500: 5 150 105;   /* #059669 — ANCHOR. 3.8:1 → graphics/large only */
+  --success-700: 4 120 87;    /* #047857 — success text grade           5.5:1 AA */
+
+  --warning-50:  255 251 235; /* #fffbeb */
+  --warning-100: 254 243 199; /* #fef3c7 */
+  --warning-500: 180 83 9;    /* #b45309 — ANCHOR, already text-grade    5.0:1 AA */
+  --warning-700: 146 64 14;   /* #92400e */
+
+  --danger-50:  254 242 242;  /* #fef2f2 */
+  --danger-100: 254 226 226;  /* #fee2e2 */
+  --danger-500: 220 38 38;    /* #dc2626 — ANCHOR, already text-grade    4.8:1 AA */
+  --danger-700: 185 28 28;    /* #b91c1c */
+
+  /* ── Type scale ───────────────────────────────────────────────────── */
+  --text-micro:   0.6875rem; /* 11px — uppercase section + column labels */
+  --text-xs:      0.75rem;   /* 12px — badges, captions */
+  --text-data:    0.8125rem; /* 13px — table cells, dense readouts */
+  --text-body:    0.875rem;  /* 14px — default UI text */
+  --text-lead:    0.9375rem; /* 15px — card titles */
+  --text-title:   1.375rem;  /* 22px — page titles */
+  --text-display: 1.75rem;   /* 28px — stat values, login heading */
+
+  --tracking-micro: 0.07em;  /* uppercase labels need air */
+  --tracking-tight: -0.02em; /* display sizes need the opposite */
+
+  /* ── Borders & radii ──────────────────────────────────────────────── */
+  --radius-card:    28px; /* the floating shells */
+  --radius-panel:   16px; /* panels nested inside a shell */
+  --radius-control: 10px; /* square-ish controls */
+  --hairline: 1px solid rgb(var(--ink-100));
+
+  /* ── Elevation ────────────────────────────────────────────────────── */
+  --shadow-card: 0 1px 2px rgb(26 22 20 / 0.04), 0 8px 24px -8px rgb(26 22 20 / 0.08);
+  --shadow-panel: 0 1px 2px rgb(26 22 20 / 0.03);
+  --shadow-chip: 0 1px 2px rgb(26 22 20 / 0.06);
+  --shadow-pop: 0 8px 12px -4px rgb(26 22 20 / 0.08), 0 24px 48px -12px rgb(26 22 20 / 0.22);
+
+  /* ── Motion ───────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════════════════════════════════ */
+html, body { height: 100%; }
+
+body {
+  @apply bg-page text-ink-900 antialiased;
+  font-size: var(--text-body);
+  /* Inter's contextual alternates + disambiguated 1/l; kerning on everywhere. */
+  font-feature-settings: 'cv05' 1, 'ss03' 1;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings default to tight tracking — at 22px+ Inter's default tracking
+   reads loose and undermines the "precise" half of the design. */
+h1, h2, h3 { letter-spacing: var(--tracking-tight); }
+
+/* One brand-tinted focus ring for every interactive element in the app,
+   at zero specificity so any component can still opt out. Uses brand-600
+   (4.8:1 on white) rather than brand-500 (2.8:1) to clear WCAG 2.4.11. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--brand-600));
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgb(var(--brand-200));
+  color: rgb(var(--ink-900));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
+
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.82); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════════════════ */
+/* The uppercase micro-label used for sidebar sections, column headers, stat
+   labels and field labels. One treatment, used everywhere.
+
+   Lives in the components layer, not utilities, so that its ink-500 default
+   is a starting point rather than a trap — `label-micro text-ink-400` has to
+   actually change the colour, and utilities only win if they are emitted
+   after this. */
+@layer components {
+  .label-micro {
+    font-size: var(--text-micro);
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-micro);
+    text-transform: uppercase;
+    @apply text-ink-500;
+  }
+}
+
+@layer utilities {
+  /* Tabular figures. Every number that a human might compare vertically —
+     table cells, stat values, page numbers, counts — must carry this. */
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* NB: `.text-data` (13px) and `.text-2xs` (11px) come from the Tailwind
+     fontSize scale, not from here — defining them twice would collide. */
+
+  /* Slim scrollbar for the sidebar and any inner scroll region. */
+  .scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--ink-200)) transparent;
+  }
+  .scroll-slim::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll-slim::-webkit-scrollbar-track { background: transparent; }
+  .scroll-slim::-webkit-scrollbar-thumb {
+    background: rgb(var(--ink-200));
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scroll-slim:hover::-webkit-scrollbar-thumb { background-clip: content-box; background-color: rgb(var(--ink-300)); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COMPONENT CLASSES
+   All of these live in `@layer components` so that Tailwind emits them
+   BEFORE the utilities. That is what makes `btn btn-pill-dark px-7` actually
+   apply px-7, and `card-inner border-danger-200` actually recolour the
+   border — unlayered, these rules would silently win against every utility
+   a page tried to override them with.
+   ═══════════════════════════════════════════════════════════════════════ */
+@layer components {
 
 /* ── Cards ───────────────────────────────────────────────────────────── */
 .card-shell {
   @apply rounded-card bg-white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.03);
-}
-.card-inner {
-  @apply rounded-2xl border border-ink-100 bg-white;
+  border: 1px solid rgb(26 22 20 / 0.05);
+  box-shadow: var(--shadow-card);
 }
 
-/* ── Pill inputs ─────────────────────────────────────────────────────── */
+/* Nested panel. Sits white-on-white inside a shell, so the border is what
+   defines it — hence a slightly stronger hairline than a row rule. */
+.card-inner {
+  @apply rounded-panel bg-white border border-ink-200;
+  box-shadow: var(--shadow-panel);
+}
+
+/* ── Form Controls ───────────────────────────────────────────────────── */
 .pill-input {
-  @apply w-full rounded-full border border-ink-200 bg-white px-5 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:border-ink-400 focus:ring-2 focus:ring-ink-200;
+  @apply w-full rounded-full border border-ink-200 bg-white px-4 py-2.5 text-ink-900
+         placeholder:text-ink-400 transition-[border-color,box-shadow] duration-150;
+  font-size: var(--text-body);
 }
+.pill-input:hover:not(:focus) { @apply border-ink-300; }
+.pill-input:focus {
+  @apply outline-none border-brand-600 ring-4 ring-brand-100;
+}
+.pill-input:disabled { @apply bg-ink-50 text-ink-400 cursor-not-allowed; }
+
+/* Multi-line sibling of .pill-input. Uses the panel radius rather than a
+   full pill, because a pill radius on a tall box crops the first and last
+   lines of text. */
+.pill-textarea {
+  @apply w-full rounded-panel border border-ink-200 bg-white px-4 py-2.5 text-ink-900
+         placeholder:text-ink-400 transition-[border-color,box-shadow] duration-150;
+  font-size: var(--text-body);
+  line-height: 1.5;
+  min-height: 5.5rem;
+  resize: vertical;
+}
+.pill-textarea:hover:not(:focus) { @apply border-ink-300; }
+.pill-textarea:focus {
+  @apply outline-none border-brand-600 ring-4 ring-brand-100;
+}
+.pill-textarea:disabled { @apply bg-ink-50 text-ink-400 cursor-not-allowed; }
+
 .pill-select {
-  @apply w-full rounded-full border border-ink-200 bg-white px-5 py-2.5 text-sm text-ink-900 appearance-none focus:outline-none focus:border-ink-400 focus:ring-2 focus:ring-ink-200;
+  @apply w-full rounded-full border border-ink-200 bg-white pl-4 pr-10 py-2.5 text-ink-900
+         appearance-none cursor-pointer transition-[border-color,box-shadow] duration-150;
+  font-size: var(--text-body);
+  /* `appearance-none` strips the native chevron — put one back, in ink-500. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237a706b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  background-size: 16px 16px;
 }
+.pill-select:hover:not(:focus) { @apply border-ink-300; }
+.pill-select:focus {
+  @apply outline-none border-brand-600 ring-4 ring-brand-100;
+}
+.pill-select:disabled { @apply bg-ink-50 text-ink-400 cursor-not-allowed; }
 
 /* ── Buttons ─────────────────────────────────────────────────────────── */
-.btn { @apply inline-flex items-center justify-center gap-2 text-sm font-medium transition-colors; }
+/* Primary action is ink, never brand — orange is reserved for wayfinding
+   (the mark, the active nav rail, focus rings). */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 font-medium
+         transition-[background-color,border-color,color,box-shadow] duration-150
+         disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none;
+  font-size: var(--text-body);
+}
+.btn:active:not(:disabled) { transform: translateY(0.5px); }
+
 .btn-primary-pill {
-  @apply rounded-full bg-ink-800 text-white px-7 py-2.5 hover:bg-ink-900;
+  @apply rounded-full bg-ink-900 text-white px-7 py-2.5;
+  box-shadow: var(--shadow-chip);
 }
+.btn-primary-pill:hover:not(:disabled) { @apply bg-ink-700; }
+
 .btn-pill-ghost {
-  @apply rounded-full border border-ink-200 bg-white text-ink-700 px-5 py-2 hover:bg-ink-50;
+  @apply rounded-full border border-ink-200 bg-white text-ink-700 px-5 py-2;
 }
+.btn-pill-ghost:hover:not(:disabled) { @apply bg-ink-50 border-ink-300 text-ink-900; }
+
 .btn-pill-dark {
-  @apply rounded-full bg-ink-800 text-white px-5 py-2 hover:bg-ink-900;
+  @apply rounded-full bg-ink-900 text-white px-5 py-2;
+  box-shadow: var(--shadow-chip);
 }
+.btn-pill-dark:hover:not(:disabled) { @apply bg-ink-700; }
+
 .btn-icon {
-  @apply inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white text-ink-700 px-3.5 py-2 text-sm hover:bg-ink-50;
+  @apply inline-flex items-center gap-1.5 rounded-control border border-ink-200 bg-white
+         text-ink-700 px-3 py-1.5 font-medium
+         transition-[background-color,border-color,color] duration-150
+         disabled:opacity-50 disabled:cursor-not-allowed;
+  font-size: var(--text-data);
 }
+.btn-icon:hover:not(:disabled) { @apply bg-ink-50 border-ink-300 text-ink-900; }
 
 /* ── Tables ──────────────────────────────────────────────────────────── */
+/* 13px cells, tabular figures on the whole table (so every page gets
+   aligned columns without touching a single cell), hairline rules, and a
+   quiet header that reads as a label row rather than a filled bar. */
 .data-table {
-  @apply w-full text-sm text-ink-900;
+  @apply w-full text-ink-700;
+  font-size: var(--text-data);
+  font-variant-numeric: tabular-nums;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 .data-table thead th {
-  @apply bg-ink-50 text-ink-900 font-semibold text-xs uppercase tracking-wide px-4 py-3.5 text-left whitespace-nowrap;
+  @apply bg-ink-50 text-ink-500 text-left whitespace-nowrap px-4 py-2.5 align-middle
+         border-b border-ink-200;
+  font-size: var(--text-micro);
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
 }
-.data-table thead th:first-child { @apply rounded-l-xl; }
-.data-table thead th:last-child { @apply rounded-r-xl; }
 .data-table tbody td {
   @apply px-4 py-3 border-b border-ink-100 whitespace-nowrap align-middle;
 }
+/* First column carries the row's identity — give it the ink weight. */
+.data-table tbody td:first-child { @apply text-ink-900 font-medium; }
 .data-table tbody tr:last-child td { @apply border-b-0; }
-.data-table tbody tr:hover td { @apply bg-ink-50/60; }
+.data-table tbody tr { transition: background-color 120ms var(--ease-out); }
+.data-table tbody tr:hover td { @apply bg-ink-50; }
 
-/* ── Status pills ────────────────────────────────────────────────────── */
+/* ── Status Pills ────────────────────────────────────────────────────── */
+/* Dot + label. The dot inherits `currentColor`, so each variant only has to
+   declare its text and tint colors and the dot follows automatically. */
 .pill-status {
-  @apply inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium;
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold whitespace-nowrap;
+  font-size: var(--text-micro);
+  line-height: 1rem;
 }
-.pill-success { @apply text-success bg-green-50; }
-.pill-warning { @apply text-warning bg-amber-50; }
-.pill-danger { @apply text-danger bg-pink-50; }
-.pill-neutral { @apply text-ink-700 bg-ink-100; }
-.pill-info { @apply text-warning bg-amber-50; }
+.pill-status::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  flex: none;
+}
+.pill-success { @apply text-success-700 bg-success-50; }
+.pill-warning { @apply text-warning bg-warning-50; }
+.pill-danger  { @apply text-danger-700 bg-danger-50; }
+.pill-neutral { @apply text-ink-600 bg-ink-100; }
+.pill-info    { @apply text-ink-600 bg-white border border-ink-200; }
+
+} /* end @layer components */
