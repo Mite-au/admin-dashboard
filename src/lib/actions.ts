@@ -10,6 +10,7 @@ import { api } from './api';
 import type {
   AdminReportStatus,
   AdminThreadRequestReviewResult,
+  ContactVerificationResult,
   PostStatus,
   ThreadAdminStatus,
   ThreadRequestStatus,
@@ -38,6 +39,27 @@ export async function updateSuburbVerification(
     {
       method: 'PATCH',
       body: JSON.stringify({ verified }),
+    },
+  );
+}
+
+/**
+ * Admin override for `users.email_verified` / `phone_verified`.
+ * Backs the inline Verify / Unverify buttons on the user detail page — the
+ * support path when a user can no longer receive their own OTP, and how a
+ * test account gets a verified channel without a real inbox or SIM. The
+ * backend rejects verifying a channel the account has no address/number for.
+ */
+export async function updateContactVerification(
+  id: string,
+  channel: 'email' | 'phone',
+  verified: boolean,
+): Promise<ContactVerificationResult> {
+  return api<ContactVerificationResult>(
+    `/admin/users/${id}/contact-verification`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ channel, verified }),
     },
   );
 }

@@ -37,7 +37,13 @@ import {
   getThreadModelLabel,
   getThreadRegionCode,
 } from '@/lib/threadModel';
-import { updateUserStatus, updateSuburbVerification, resetUserPassword, resetUserAvatar } from '@/lib/actions';
+import {
+  updateUserStatus,
+  updateSuburbVerification,
+  updateContactVerification,
+  resetUserPassword,
+  resetUserAvatar,
+} from '@/lib/actions';
 import type { AdminPost, AdminReport, AdminUser, AdminUserConversation, AdminUserPurchase, AdminUserThread, Paged } from '@/lib/types';
 
 type TabKey = 'sold' | 'purchased' | 'thread' | 'chat' | 'reports' | 'logs';
@@ -156,27 +162,20 @@ export function UserDetailClient({
 
         <dl className="grid grid-cols-3 gap-x-4 gap-y-5 text-sm">
           <InfoField label="User ID" value={`m${user.id}`} />
-          <InfoField
+          {/* Phone / Email — interactive verify/unverify */}
+          <ContactField
+            userId={user.id}
             label="Phone"
-            value={user.phone ?? '—'}
-            badge={
-              user.phone
-                ? user.phoneVerified
-                  ? { label: 'Verified', tone: 'success' }
-                  : { label: 'Verification required', tone: 'danger' }
-                : undefined
-            }
+            channel="phone"
+            value={user.phone}
+            verified={user.phoneVerified}
           />
-          <InfoField
+          <ContactField
+            userId={user.id}
             label="Email"
-            value={user.email ?? '—'}
-            badge={
-              user.email
-                ? user.emailVerified
-                  ? { label: 'Verified', tone: 'success' }
-                  : { label: 'Verification required', tone: 'danger' }
-                : undefined
-            }
+            channel="email"
+            value={user.email}
+            verified={user.emailVerified}
           />
 
           <InfoField label="Nationality" value={formatCountry(user.nationality)} />
@@ -404,15 +403,79 @@ function SuburbField({
   );
 }
 
+/**
+ * Phone / Email field with an inline Verify / Unverify button.
+ *
+ * The button is the admin override for `users.email_verified` /
+ * `phone_verified` — the way through when a user can no longer receive their
+ * own OTP, and how a test account gets a verified channel without a real
+ * inbox or SIM. Nothing to verify without an address or number on file, so
+ * the control is hidden in that case (the backend rejects it too).
+ */
+function ContactField({
+  userId,
+  label,
+  channel,
+  value,
+  verified,
+}: {
+  userId: string;
+  label: string;
+  channel: 'email' | 'phone';
+  value?: string | null;
+  verified?: boolean;
+}) {
+  const router = useRouter();
+  const [isPending, setIsPending] = useState(false);
+
+  const handleVerify = async () => {
+    if (isPending) return;
+    setIsPending(true);
+    try {
+      await updateContactVerification(userId, channel, !verified);
+      router.refresh();
+    } catch (err) {
+      alert(`Verification update failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <div className="col-span-1">
+      <dt className="text-xs text-ink-500 mb-1">{label}</dt>
+      <dd className="text-sm text-ink-900 break-words">{value ?? '—'}</dd>
+      {value && (
+        <div className="mt-1 flex items-center gap-2 flex-wrap">
+          <span
+            className={
+              'inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ' +
+              (verified ? 'bg-green-50 text-success' : 'bg-pink-50 text-danger')
+            }
+          >
+            {verified ? 'Verified' : 'Verification required'}
+          </span>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={handleVerify}
+            className="text-[11px] font-medium text-brand-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isPending ? 'Saving…' : verified ? 'Unverify' : 'Verify'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InfoField({
   label,
   value,
-  badge,
   spanCols = 1,
 }: {
   label: string;
   value: string;
-  badge?: { label: string; tone: 'success' | 'danger' };
   spanCols?: 1 | 2 | 3;
 }) {
   const span = spanCols === 1 ? 'col-span-1' : spanCols === 2 ? 'col-span-2' : 'col-span-3';
@@ -420,18 +483,6 @@ function InfoField({
     <div className={span}>
       <dt className="text-xs text-ink-500 mb-1">{label}</dt>
       <dd className="text-sm text-ink-900 break-words">{value}</dd>
-      {badge && (
-        <span
-          className={
-            'mt-1 inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ' +
-            (badge.tone === 'success'
-              ? 'bg-green-50 text-success'
-              : 'bg-pink-50 text-danger')
-          }
-        >
-          {badge.label}
-        </span>
-      )}
     </div>
   );
 }

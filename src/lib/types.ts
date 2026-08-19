@@ -47,6 +47,15 @@ export interface AdminUser {
   totalSales?: number | null;
 }
 
+/** Response of PATCH /admin/users/:id/contact-verification. */
+export interface ContactVerificationResult {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+}
+
 export interface AdminPost {
   id: string;
   title: string;
