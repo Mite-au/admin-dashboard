@@ -18,6 +18,7 @@ import {
 import {
   formatThreadType,
   getThreadInterestKey,
+  getThreadModelLabel,
   getThreadRegionCode,
   getThreadSuburbCode,
   splitThreadName,
@@ -46,8 +47,9 @@ export function ThreadDetailClient({ thread }: { thread: AdminThreadDetail }) {
   const regionCode = getThreadRegionCode(thread);
   const suburbCode = getThreadSuburbCode(thread);
   const interestKey = getThreadInterestKey(thread);
+  const modelLabel = getThreadModelLabel(thread);
   const { regionName } = splitThreadName(thread.name);
-  const coverImage = thread.coverImage ?? thread.cover_image ?? null;
+  const coverImage = thread.coverImage ?? null;
 
   return (
     <div className="space-y-6 px-8 pb-8">
@@ -79,16 +81,26 @@ export function ThreadDetailClient({ thread }: { thread: AdminThreadDetail }) {
             )}
 
             <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-              <MetaField label="Model">
-                <ThreadModelChip thread={thread} />
-              </MetaField>
-              <MetaField label="Raw type" value={formatThreadType(thread.type)} />
-              <MetaField label="Region code">
-                <CodeChip value={regionCode} />
-              </MetaField>
-              <MetaField label="Interest key">
-                <CodeChip value={interestKey} />
-              </MetaField>
+              {/* The admin thread endpoints send none of the three region /
+                  interest codes today, so these fields stay out of the way
+                  rather than filling the card with em-dashes. They come back
+                  on their own if the backend starts selecting the columns. */}
+              {modelLabel && (
+                <MetaField label="Model">
+                  <ThreadModelChip thread={thread} />
+                </MetaField>
+              )}
+              <MetaField label="Type" value={formatThreadType(thread.type)} />
+              {regionCode && (
+                <MetaField label="Region code">
+                  <CodeChip value={regionCode} />
+                </MetaField>
+              )}
+              {interestKey && (
+                <MetaField label="Interest key">
+                  <CodeChip value={interestKey} />
+                </MetaField>
+              )}
               {suburbCode && (
                 <MetaField label="Legacy suburb code">
                   <CodeChip value={suburbCode} />

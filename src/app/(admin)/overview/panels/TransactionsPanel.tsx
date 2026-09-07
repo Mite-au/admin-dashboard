@@ -7,9 +7,13 @@ import type { TransactionsActivityPoint, TransactionsOverview } from '@/lib/type
 import { SectionError, StatGrid, columnOf, pctDelta } from '../parts';
 
 /**
- * Demand side: trades that actually completed, and the money behind them.
- * Volume can go negative once refunds net off, which is why the money charts
- * keep a real zero baseline rather than a compacted one.
+ * Demand side: trades that actually completed, and the value behind them.
+ *
+ * "Accepted offer value" is the wire's `acceptedOfferGmv`: offers accepted in
+ * the period, whether or not both parties went on to confirm. "Confirmed
+ * volume" is the value of trades confirmed in the period — a different set of
+ * offers, some accepted before the window opened — so the two are shown side
+ * by side but never divided into a completion rate.
  */
 export function TransactionsPanel({
   data,
@@ -27,6 +31,10 @@ export function TransactionsPanel({
     period.from,
     period.to,
   );
+  const avgTrade =
+    totals.confirmedTransactionCount > 0
+      ? totals.confirmedTransactionVolume / totals.confirmedTransactionCount
+      : null;
 
   return (
     <>
@@ -43,18 +51,23 @@ export function TransactionsPanel({
         />
         <StatCard
           label="Confirmed volume"
-          value={formatMoney(totals.confirmedTransactionVolume)}
+          value={formatMoney(totals.confirmedTransactionVolume, null, { digits: 0 })}
           delta={
             prev
               ? pctDelta(totals.confirmedTransactionVolume, prev.confirmedTransactionVolume)
               : undefined
           }
-          hint="Net of refunds"
+          hint={
+            avgTrade === null
+              ? 'Offer value on trades both parties confirmed'
+              : `Trades both parties confirmed · ${formatMoney(avgTrade)} per trade`
+          }
         />
         <StatCard
-          label="GMV"
-          value={formatMoney(totals.gmv)}
-          delta={prev ? pctDelta(totals.gmv, prev.gmv) : undefined}
+          label="Accepted offer value"
+          value={formatMoney(totals.acceptedOfferGmv, null, { digits: 0 })}
+          delta={prev ? pctDelta(totals.acceptedOfferGmv, prev.acceptedOfferGmv) : undefined}
+          hint="Offers accepted this period, before confirmation"
         />
       </StatGrid>
 
@@ -66,12 +79,12 @@ export function TransactionsPanel({
             kind="bar"
           />
         </Card>
-        <Card title="Volume and GMV" subtitle={periodLabel(period)}>
+        <Card title="Accepted vs confirmed value" subtitle={periodLabel(period)}>
           <TimeSeriesChart
             data={days}
             series={[
+              { key: 'acceptedOfferGmv', label: 'Accepted offer value' },
               { key: 'confirmedTransactionVolume', label: 'Confirmed volume' },
-              { key: 'gmv', label: 'GMV' },
             ]}
             kind="line"
             valueKind="currency"

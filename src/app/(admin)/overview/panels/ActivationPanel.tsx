@@ -7,9 +7,11 @@ import type { ActivityOverview, ActivityOverviewPoint } from '@/lib/types';
 import { SectionError, StatGrid, StripLabel, columnOf, pctDelta } from '../parts';
 
 /**
- * Sign-up through to verification. Only sign-ups are a period flow; the
- * verified counts are running totals, so they carry a live tick instead of a
- * delta that would compare a stock against a flow.
+ * Sign-up through to verification. Sign-ups are a period flow. The verified
+ * counts are running totals, so they carry a live tick instead of a delta that
+ * would compare a stock against a flow. "Returning verified" is neither: it is
+ * verified users who joined before the period and were seen online during it,
+ * so it is period-scoped but has no backend comparison.
  */
 export function ActivationPanel({
   data,
@@ -45,10 +47,9 @@ export function ActivationPanel({
           hint="Running total"
         />
         <StatCard
-          label="Weekly returning"
+          label="Returning verified users"
           value={formatNumber(totals.weeklyReturningVerifiedUsers)}
-          isSnapshot
-          hint={`${formatPercent(returningShare)} of verified users`}
+          hint={`${formatPercent(returningShare)} of verified users · joined before this period, seen online during it`}
         />
       </StatGrid>
 
@@ -59,11 +60,13 @@ export function ActivationPanel({
             label="Email verified"
             value={formatNumber(totals.emailVerifiedCount)}
             isSnapshot
+            hint="Current total · a user verified both ways counts in each"
           />
           <StatCard
             label="Phone verified"
             value={formatNumber(totals.phoneVerifiedCount)}
             isSnapshot
+            hint="Current total · a user verified both ways counts in each"
           />
         </StatGrid>
       </div>
@@ -76,10 +79,13 @@ export function ActivationPanel({
             kind="area"
           />
         </Card>
-        <Card title="Verified users, cumulative" subtitle={periodLabel(period)}>
+        <Card
+          title="Users verifying per day"
+          subtitle={`${periodLabel(period)} · distinct users who verified an email or phone that day`}
+        >
           <TimeSeriesChart
             data={days}
-            series={[{ key: 'verifiedUsers', label: 'Verified users' }]}
+            series={[{ key: 'verifiedUsers', label: 'Users verified' }]}
             kind="area"
           />
         </Card>

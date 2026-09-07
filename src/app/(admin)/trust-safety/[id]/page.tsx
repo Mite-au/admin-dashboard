@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
 import { getReport } from '@/lib/fetchers';
-import { targetMeta } from '../ReportTarget';
+import { formatReportReason, targetMeta } from '../ReportTarget';
 import { ReportDetailClient } from './ReportDetailClient';
 
 export default async function ReportDetailPage({
@@ -27,7 +27,7 @@ export default async function ReportDetailPage({
         title="Report detail"
         description={
           report.reason
-            ? `${label} reported for ${report.reason.toLowerCase()}.`
+            ? `${label} reported for ${formatReportReason(report.reason).toLowerCase()}.`
             : `${label} reported without a stated reason.`
         }
         actions={

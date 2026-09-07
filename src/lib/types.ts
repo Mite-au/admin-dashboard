@@ -1,21 +1,37 @@
 // Mirror the Prisma schema for types used across the dashboard.
 export type PostStatus = 'draft' | 'published' | 'sold' | 'paused' | 'archived' | 'deleted';
 export type ThreadAdminStatus = 'active' | 'flagged' | 'archived' | 'hidden';
-export type ThreadType =
-  | 'suburb'
-  | 'interest'
-  | 'suburb_interest'
-  | 'SUBURB'
-  | 'INTEREST'
-  | 'SUBURB_INTEREST';
+/**
+ * The only two values any admin thread endpoint emits. The DB enum also has
+ * `SUBURB_INTEREST`, but `admin.util.ts` folds it into `interest` and both
+ * thread mappers apply that fold before responding, so a third value never
+ * reaches the dashboard.
+ */
+export type ThreadType = 'suburb' | 'interest';
 export type ThreadRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type AdminReportStatus = 'open' | 'resolved';
-export type AdminReportTargetType = 'post' | 'user';
+/**
+ * Five report targets on the backend (ids are prefixed p/u/m/c/t so they stay
+ * unique across tables). `market` is a marketplace listing reported from the
+ * market surface; the two `*_message` types are individual chat messages.
+ */
+export type AdminReportTargetType =
+  | 'post'
+  | 'user'
+  | 'market'
+  | 'conversation_message'
+  | 'thread_message';
 /**
  * Real DB enum values from `users.status`, plus the synthetic `'banned'`
  * which the backend returns when `user_penalties.active = true`.
  */
-export type UserStatus = 'active' | 'suspended' | 'deleted' | 'pending_profile' | 'banned';
+export type UserStatus =
+  | 'active'
+  | 'suspended'
+  | 'deleted'
+  | 'pending_profile'
+  | 'pending_deletion'
+  | 'banned';
 
 export interface AdminUser {
   id: string;
@@ -71,6 +87,12 @@ export interface ContactVerificationResult {
   phoneVerified: boolean;
 }
 
+/** Response of POST /admin/users/:id/penalty. */
+export interface UserPenaltyResult {
+  userId: string;
+  hasPenalty: boolean;
+}
+
 export interface AdminPostSeller {
   id: string;
   name: string;
@@ -103,18 +125,41 @@ export interface AdminPost {
   reportsCount: number;
 }
 
+/**
+ * The only statuses the read side can produce. `derivePurchaseStatus` maps the
+ * latest appointment onto exactly these three; `disputed` and `refunded` exist
+ * only on the legacy `transactions` write table, which no GET reads from.
+ */
+export type PurchaseStatus = 'pending' | 'completed' | 'cancelled';
+
 export interface AdminTransaction {
   id: string;
   postId: string;
   postTitle: string;
+  /** Flattened to a display string by `/admin/transactions` — unlike the
+   *  purchases endpoint, which sends a party object. See `AdminPurchaseParty`. */
   buyer: string;
   seller: string;
   amount: number;
   currency: string;
-  status: 'pending' | 'completed' | 'cancelled' | 'disputed' | 'refunded';
+  status: PurchaseStatus;
   createdAt: string;
   completedAt?: string | null;
   cancelledAt?: string | null;
+}
+
+/**
+ * A counterparty on `/admin/users/:id/purchases`.
+ *
+ * This endpoint sends an OBJECT where its sibling `/admin/transactions` sends
+ * a display string, which is how the purchases tab ended up rendering an
+ * object as a React child and taking the whole tab down. Rendering must go
+ * through `name ?? email ?? id`, never the value itself.
+ */
+export interface AdminPurchaseParty {
+  id: string;
+  name: string | null;
+  email: string | null;
 }
 
 export interface AdminUserPurchase {
@@ -122,11 +167,11 @@ export interface AdminUserPurchase {
   postId: string;
   postTitle: string;
   category: string | null;
-  buyer: string;
-  seller: string;
+  buyer: AdminPurchaseParty | null;
+  seller: AdminPurchaseParty | null;
   amount: number;
   currency: string;
-  status: 'pending' | 'completed' | 'cancelled' | 'disputed' | 'refunded';
+  status: PurchaseStatus;
   date: string;
   createdAt: string;
   completedAt?: string | null;
@@ -136,16 +181,20 @@ export interface AdminUserPurchase {
   appointmentId?: string | null;
 }
 
+/**
+ * `regionCode` / `suburbCode` / `interestKey` are optional because **no admin
+ * thread endpoint currently sends them** — the columns exist on `threads` but
+ * `toAdminThreadListItem` never selects them. They stay declared (and are read
+ * defensively) so the views light up the day the backend adds them; until
+ * then, absent means "unknown", never "legacy".
+ */
 export interface AdminThreadListItem {
   id: string;
   name: string;
   type: ThreadType;
   regionCode?: string | null;
-  region_code?: string | null;
   suburbCode?: string | null;
-  suburb_code?: string | null;
   interestKey?: string | null;
-  interest_key?: string | null;
   memberCount: number;
   messageCount: number;
   createdAt: string;
@@ -157,20 +206,19 @@ export interface AdminThreadDetail extends AdminThreadListItem {
   description?: string | null;
   slug?: string | null;
   lastActiveAt?: string | null;
+  /** Not sent today either (`threads.icon_url` is never mapped into the detail
+   *  DTO); the hero image is skipped when it is absent. */
   coverImage?: string | null;
-  cover_image?: string | null;
 }
 
+/** Same caveat as `AdminThreadListItem` on the three codes. */
 export interface AdminUserThread {
   id: string;
   name: string;
   type: ThreadType;
   regionCode?: string | null;
-  region_code?: string | null;
   suburbCode?: string | null;
-  suburb_code?: string | null;
   interestKey?: string | null;
-  interest_key?: string | null;
   memberCount: number;
   lastActiveAt: string | null;
   createdAt: string;
@@ -266,8 +314,8 @@ export interface AdminReport {
 // Unit convention, enforced by the normalisers in `fetchers.ts`: every field
 // named `*Rate` is a FRACTION in 0..1 (`0.124` = 12.4%). Only formatters
 // multiply by 100. Every `*Count` / `*Users` field is a whole non-negative
-// number; money fields (`gmv`, `*Volume`) are in whole AUD, not cents, and
-// may be negative once refunds are netted off.
+// number; money fields (`*Gmv`, `*Volume`) are in whole AUD, not cents — plain
+// sums of accepted offer amounts (the product moves no money, so no refunds).
 //
 // `previousTotals` is optional on the section payloads and stays absent when
 // the backend didn't send a comparison — undefined means "no comparison
@@ -300,6 +348,9 @@ export interface OverviewTotals {
   /** Posts with status=sold. Proxy only — not a confirmed transaction count.
    *  Absent (not 0) when the backend doesn't compute it. */
   soldPosts?: number;
+  /** Whole AUD. Sum of the asking prices of sold posts — a liquidity proxy,
+   *  not takings. Absent when the backend doesn't compute it. */
+  revenue?: number;
 }
 
 export interface OverviewStats {
@@ -307,13 +358,22 @@ export interface OverviewStats {
   totals: OverviewTotals;
 }
 
+export interface EngagementSummaryPreviousTotals {
+  chatStartedCount: number;
+  messageSentCount: number;
+  threadActiveUsers: number;
+}
+
 export interface EngagementSummary {
+  /** Users whose `last_active_at` falls inside the period (socket presence). */
   activeUsers: number;
   chatStartedCount: number;
-  /** DM + thread messages combined. */
+  /** DM + thread messages combined, all message types. */
   messageSentCount: number;
   /** Distinct message senders in threads (not total thread members). */
   threadActiveUsers: number;
+  /** `activeUsers` is deliberately absent: the backend does not compare it. */
+  previousTotals?: EngagementSummaryPreviousTotals;
 }
 
 export type EngagementActivityPoint = {
@@ -397,17 +457,19 @@ export interface ReportsOverview {
 
 export interface TransactionsOverviewTotals {
   confirmedTransactionCount: number;
-  /** Whole AUD. Can go negative once refunds are netted off. */
+  /** Whole AUD. Sum of accepted offer amounts on trades both parties
+   *  confirmed in the period. */
   confirmedTransactionVolume: number;
-  /** Whole AUD. */
-  gmv: number;
+  /** Whole AUD. Value of offers accepted in the period (`acceptedOfferGmv`
+   *  on the wire) — accepted, not necessarily confirmed by both parties. */
+  acceptedOfferGmv: number;
 }
 
 export type TransactionsActivityPoint = {
   date: string;
   confirmedTransactionCount: number;
   confirmedTransactionVolume: number;
-  gmv: number;
+  acceptedOfferGmv: number;
 };
 
 export interface TransactionsOverview {

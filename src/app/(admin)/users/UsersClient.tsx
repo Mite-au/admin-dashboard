@@ -13,12 +13,23 @@ import { formatCountry, formatDateTime, formatRelative } from '@/lib/format';
 import type { UserFilters } from '@/lib/fetchers';
 import type { AdminUser, Paged } from '@/lib/types';
 
+/**
+ * What `AdminUsersService.listUsers` actually applies: `banned` is the
+ * synthetic penalty flag, the rest are real `users_status` members. An empty
+ * value sends no `status` at all, which is what the backend's own `all` means,
+ * so there is no separate "all" option to add.
+ *
+ * `pending_deletion` is deliberately absent even though the API can *return*
+ * it: the service's filter whitelist doesn't include it, so selecting it would
+ * silently list every user instead of narrowing.
+ */
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
   { value: 'active', label: 'Active' },
   { value: 'pending_profile', label: 'Pending profile' },
   { value: 'suspended', label: 'Suspended' },
   { value: 'banned', label: 'Banned' },
+  { value: 'deleted', label: 'Deleted' },
 ] as const;
 
 export function UsersClient({

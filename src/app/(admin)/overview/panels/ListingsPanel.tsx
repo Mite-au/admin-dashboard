@@ -1,7 +1,7 @@
 import { Sparkline, TimeSeriesChart } from '@/components/charts';
 import { Card, StatCard } from '@/components/ui';
 import { formatNumber, formatPercent } from '@/lib/format';
-import { fillDailySeries } from '@/lib/metrics';
+import { fillDailySeries, sumBy } from '@/lib/metrics';
 import { periodLabel, type PeriodRange } from '@/lib/period';
 import type { ListingsActivityPoint, ListingsOverview } from '@/lib/types';
 import {
@@ -16,6 +16,10 @@ import {
 /**
  * Supply side: how many listings get started, created and published, and how
  * much of that comes from people listing for the first time.
+ *
+ * "Listings started" has no producer in the app yet — the backend counts an
+ * event nothing emits — so it is only shown once a non-zero value has been
+ * seen, rather than as a permanent zero that reads like a broken step.
  */
 export function ListingsPanel({
   data,
@@ -33,6 +37,11 @@ export function ListingsPanel({
     period.from,
     period.to,
   );
+  const hasStarted =
+    totals.listingStartedCount > 0 ||
+    (prev?.listingStartedCount ?? 0) > 0 ||
+    sumBy(days, (day) => day.listingStarted) > 0;
+  const created = sumBy(days, (day) => day.listings);
 
   return (
     <>
@@ -47,12 +56,13 @@ export function ListingsPanel({
           label="First-listing rate"
           value={formatPercent(totals.firstListingRate)}
           delta={prev ? pointsDelta(totals.firstListingRate, prev.firstListingRate) : undefined}
-          hint="Publishers listing for the first time"
+          hint="First-time posters this period, as a share of all verified users"
         />
         <StatCard
           label="Listing detail views"
           value={formatNumber(totals.totalListingDetailViews)}
-          hint="No period comparison available"
+          isSnapshot
+          hint="All time, including guests"
         />
         <StatCard
           label="Repeat listers"
@@ -63,13 +73,24 @@ export function ListingsPanel({
       </StatGrid>
 
       <div className="space-y-3">
-        <StripLabel>Creation steps</StripLabel>
-        <StatGrid cols={2}>
-          <StatCard
-            label="Listings started"
-            value={formatNumber(totals.listingStartedCount)}
-            delta={prev ? pctDelta(totals.listingStartedCount, prev.listingStartedCount) : undefined}
-          />
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <StripLabel>Creation steps</StripLabel>
+          {!hasStarted && (
+            <p className="text-2xs text-ink-400">
+              Listing starts are not instrumented in the app yet
+            </p>
+          )}
+        </div>
+        <StatGrid cols={hasStarted ? 4 : 3}>
+          {hasStarted && (
+            <StatCard
+              label="Listings started"
+              value={formatNumber(totals.listingStartedCount)}
+              delta={
+                prev ? pctDelta(totals.listingStartedCount, prev.listingStartedCount) : undefined
+              }
+            />
+          )}
           <StatCard
             label="Create tapped"
             value={formatNumber(totals.listingCreateClickedCount)}
@@ -79,6 +100,19 @@ export function ListingsPanel({
                 : undefined
             }
           />
+          <StatCard
+            label="Created"
+            value={formatNumber(created)}
+            hint="Posts created this period, drafts included"
+          />
+          <StatCard
+            label="Published"
+            value={formatNumber(totals.listingPublishedCount)}
+            delta={
+              prev ? pctDelta(totals.listingPublishedCount, prev.listingPublishedCount) : undefined
+            }
+            hint="Includes listings created before this period"
+          />
         </StatGrid>
       </div>
 
@@ -86,12 +120,13 @@ export function ListingsPanel({
         title="Listing creation, day by day"
         subtitle={periodLabel(period)}
       >
-        {/* Four nested magnitudes — each step is a subset of the one above it,
-            so the vertical gaps between the lines are the drop-off. */}
+        {/* Each line is its own period count — a listing published today may
+            have been created last month — so read the gaps as volume, not as
+            one cohort narrowing step by step. */}
         <TimeSeriesChart
           data={days}
           series={[
-            { key: 'listingStarted', label: 'Started' },
+            ...(hasStarted ? [{ key: 'listingStarted', label: 'Started' }] : []),
             { key: 'listingCreateClicked', label: 'Create tapped' },
             { key: 'listings', label: 'Created' },
             { key: 'listingsPublished', label: 'Published' },

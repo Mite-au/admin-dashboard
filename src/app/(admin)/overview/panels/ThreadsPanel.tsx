@@ -1,7 +1,7 @@
 import { Sparkline, TimeSeriesChart } from '@/components/charts';
 import { Card, StatCard } from '@/components/ui';
-import { formatNumber } from '@/lib/format';
-import { fillDailySeries } from '@/lib/metrics';
+import { formatNumber, formatPercent } from '@/lib/format';
+import { fillDailySeries, safeRate } from '@/lib/metrics';
 import { periodLabel, type PeriodRange } from '@/lib/period';
 import type { ThreadsActivityPoint, ThreadsOverview } from '@/lib/types';
 import { SectionError, StatGrid, columnOf, pctDelta } from '../parts';
@@ -27,6 +27,7 @@ export function ThreadsPanel({
     period.from,
     period.to,
   );
+  const joinRate = safeRate(totals.threadJoinCount, totals.threadOpenCount);
 
   return (
     <>
@@ -41,6 +42,7 @@ export function ThreadsPanel({
           label="Thread joins"
           value={formatNumber(totals.threadJoinCount)}
           delta={prev ? pctDelta(totals.threadJoinCount, prev.threadJoinCount) : undefined}
+          hint={joinRate === null ? undefined : `${formatPercent(joinRate)} of opens`}
         />
         <StatCard
           label="Posting members"

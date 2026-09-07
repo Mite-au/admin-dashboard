@@ -2,16 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import clsx from 'clsx';
 import { ChevronRight, Users } from 'lucide-react';
 import { EmptyState } from '@/components/ui';
 import { formatDateTime, formatNumber, formatRelative } from '@/lib/format';
-import {
-  getThreadInterestKey,
-  getThreadModelLabel,
-  getThreadRegionCode,
-  splitThreadName,
-} from '@/lib/threadModel';
+import { formatThreadType, splitThreadName } from '@/lib/threadModel';
 import type { AdminUserThread } from '@/lib/types';
 import { TableScroll } from './ActivityChrome';
 
@@ -40,9 +34,8 @@ export function ThreadsList({ threads }: { threads: AdminUserThread[] }) {
         <thead>
           <tr>
             <th>Thread</th>
-            <th>Model</th>
             <th>Region</th>
-            <th>Interest</th>
+            <th>Type</th>
             <th className="text-right">Members</th>
             <th>Last active</th>
             <th className="w-10" aria-label="Open" />
@@ -62,11 +55,10 @@ export function ThreadsList({ threads }: { threads: AdminUserThread[] }) {
                     {topicName || `Thread ${thread.id}`}
                   </Link>
                 </td>
-                <td>
-                  <ThreadModelChip thread={thread} />
-                </td>
-                <td>{regionName || getThreadRegionCode(thread) || '—'}</td>
-                <td>{getThreadInterestKey(thread) || '—'}</td>
+                {/* `/admin/users/:id/threads` sends no region code, so the
+                    region is whatever the "<Region> > <Topic>" name carries. */}
+                <td>{regionName || '—'}</td>
+                <td>{formatThreadType(thread.type)}</td>
                 <td className="tnum text-right text-ink-900">
                   {formatNumber(thread.memberCount)}
                 </td>
@@ -87,26 +79,5 @@ export function ThreadsList({ threads }: { threads: AdminUserThread[] }) {
         </tbody>
       </table>
     </TableScroll>
-  );
-}
-
-/**
- * Which thread model a row belongs to. Only "Legacy" gets a tint — it means
- * the row doesn't match either supported shape, which is a data issue worth
- * noticing. The two healthy models are peers and stay neutral.
- */
-function ThreadModelChip({ thread }: { thread: AdminUserThread }) {
-  const label = getThreadModelLabel(thread);
-  const isLegacy = label === 'Legacy';
-
-  return (
-    <span
-      className={clsx(
-        'inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-2xs font-semibold',
-        isLegacy ? 'bg-warning-50 text-warning-700' : 'bg-ink-100 text-ink-700',
-      )}
-    >
-      {label}
-    </span>
   );
 }

@@ -5,11 +5,14 @@ import {
   getChatOverview,
   getEngagementActivity,
   getEngagementSummary,
+  getFunnel,
   getListingsOverview,
   getOverview,
   getReportsOverview,
+  getSearchGaps,
   getThreadsOverview,
   getTransactionsOverview,
+  getUserLogins,
   optional,
 } from '@/lib/fetchers';
 import { resolvePeriodFromRecord } from '@/lib/period';
@@ -25,7 +28,11 @@ function first(value: string | string[] | undefined): string | undefined {
  * guarantees and need no page-side checking. `optional` is a different job: it
  * covers a request that never returned at all, which no amount of
  * normalisation can fill in — a null section renders its own failure notice
- * rather than taking the other eight down with it.
+ * rather than taking the other eleven down with it.
+ *
+ * The digest above the tabs borrows three of the analytics pages' payloads:
+ * the funnel, the top search gaps, and the login windows (recent-login list
+ * trimmed to one row — only the totals and the daily series are used here).
  */
 export default async function OverviewPage({
   searchParams,
@@ -33,8 +40,8 @@ export default async function OverviewPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const rawParams = await searchParams;
-  const { from, to } = resolvePeriodFromRecord(rawParams);
-  const period = { from, to };
+  const periodParams = resolvePeriodFromRecord(rawParams);
+  const period = { from: periodParams.from, to: periodParams.to };
 
   const tab = resolveTab(first(rawParams.tab));
   const section = resolveSection(tab, first(rawParams.section));
@@ -49,6 +56,9 @@ export default async function OverviewPage({
     transactionsOverview,
     listingsOverview,
     activityOverview,
+    funnel,
+    searchGaps,
+    userLogins,
   ] = await Promise.all([
     getOverview(period),
     optional(getChatOverview(period)),
@@ -59,6 +69,9 @@ export default async function OverviewPage({
     optional(getTransactionsOverview(period)),
     optional(getListingsOverview(period)),
     optional(getActivityOverview(period)),
+    optional(getFunnel(period)),
+    optional(getSearchGaps(period, 5)),
+    optional(getUserLogins(1)),
   ]);
 
   return (
@@ -70,6 +83,7 @@ export default async function OverviewPage({
       />
       <OverviewTabLayout
         period={period}
+        periodParams={periodParams}
         initialTab={tab}
         initialSection={section}
         overview={overview}
@@ -81,6 +95,9 @@ export default async function OverviewPage({
         transactionsOverview={transactionsOverview}
         listingsOverview={listingsOverview}
         activityOverview={activityOverview}
+        funnel={funnel}
+        searchGaps={searchGaps}
+        userLogins={userLogins}
       />
     </>
   );

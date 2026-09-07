@@ -13,6 +13,10 @@ const map: Record<string, string> = {
   banned: 'pill-danger',
   pending_profile: 'pill-warning',
   'pending profile': 'pill-warning',
+  // A deletion the member has requested but that hasn't run yet: still an
+  // account, still actionable, so it reads as in-flight rather than gone.
+  pending_deletion: 'pill-warning',
+  'pending deletion': 'pill-warning',
   deleted: 'pill-neutral',
 
   // Post statuses
@@ -22,7 +26,9 @@ const map: Record<string, string> = {
   archived: 'pill-neutral',
   draft: 'pill-neutral',
 
-  // Transaction / offer statuses
+  // Transaction / purchase statuses. The read side only ever produces
+  // pending / completed / cancelled — `disputed` and `refunded` live on the
+  // legacy `transactions` write table, which no GET reads from.
   complete: 'pill-success',
   completed: 'pill-success',
   fail: 'pill-danger',
@@ -31,8 +37,6 @@ const map: Record<string, string> = {
   in_progress: 'pill-warning',
   pending: 'pill-neutral',
   cancelled: 'pill-neutral',
-  disputed: 'pill-danger',
-  refunded: 'pill-warning',
 
   // Report statuses
   open: 'pill-warning',

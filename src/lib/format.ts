@@ -19,14 +19,31 @@ export function formatDateTime(iso: string | null | undefined) {
   if (!d) return '—';
   return d.toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' });
 }
-export function formatMoney(value: number | null | undefined, currency?: string | null) {
+/**
+ * Currency in en-AU. `opts.digits` pins the fraction digits — pass `0` for
+ * an aggregate (period volume, asking value) where cents are noise; the
+ * default keeps them for a single price or a per-trade average.
+ */
+export function formatMoney(
+  value: number | null | undefined,
+  currency?: string | null,
+  opts: { digits?: number } = {},
+) {
   const amount = typeof value === 'number' && Number.isFinite(value) ? value : 0;
   // Intl throws a RangeError on anything that isn't a 3-letter ISO code.
   const code =
     typeof currency === 'string' && /^[A-Za-z]{3}$/.test(currency)
       ? currency.toUpperCase()
       : 'AUD';
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: code }).format(amount);
+  const digits =
+    typeof opts.digits === 'number' && Number.isFinite(opts.digits)
+      ? Math.max(0, Math.min(4, Math.trunc(opts.digits)))
+      : undefined;
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: code,
+    ...(digits === undefined ? {} : { minimumFractionDigits: digits, maximumFractionDigits: digits }),
+  }).format(amount);
 }
 export function formatNumber(value: number | null | undefined) {
   const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;

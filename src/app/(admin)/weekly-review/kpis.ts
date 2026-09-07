@@ -7,18 +7,56 @@ import type {
   WeeklyMetricsResponse,
 } from '@/lib/types';
 
-/** Reading order for the review: acquisition, supply, demand. */
-const KPI_ORDER: { key: WeeklyCoreKpiKey; label: string }[] = [
-  { key: 'verifiedUsers', label: 'Newly verified users' },
-  { key: 'firstListingRate', label: 'First-listing rate' },
-  { key: 'publishedListings', label: 'Listings published' },
-  { key: 'chatStartRate', label: 'Listing → chat start' },
-  { key: 'transactionSignals', label: 'Transaction signals' },
+/**
+ * Reading order for the review: acquisition, supply, demand.
+ *
+ * Labels and hints are written against what `/admin/metrics/weekly` actually
+ * queries, which in three places is not what the field name suggests:
+ *
+ *  * `verifiedUsers` is an EVENT count for the week, not the all-time verified
+ *    total the Overview page shows under the same word.
+ *  * `chatStartRate` is a same-week set intersection — listings published this
+ *    week that also drew a chat this week — not listing-to-chat attribution.
+ *    A chat on an older listing is invisible to it.
+ *  * `transactionSignals` no longer means "intent". Its source event,
+ *    `listing_marked_sold`, moved off offer-acceptance and now fires only when
+ *    both parties confirm an appointment — once per listing, ever. So it
+ *    counts listings sold on a confirmed trade, which is why it is no longer
+ *    labelled as a signal.
+ */
+const KPI_ORDER: { key: WeeklyCoreKpiKey; label: string; hint: string }[] = [
+  {
+    key: 'verifiedUsers',
+    label: 'Newly verified users',
+    hint: 'Distinct users who verified an email or phone this week.',
+  },
+  {
+    key: 'firstListingRate',
+    label: 'First-time seller rate',
+    hint: 'Users publishing their first ever listing ÷ all verified users at week end.',
+  },
+  {
+    key: 'publishedListings',
+    label: 'Listings published',
+    hint: 'Distinct listings published this week.',
+  },
+  {
+    key: 'chatStartRate',
+    label: 'New listings getting chats',
+    hint: "Share of this week's published listings that drew a chat in the same week.",
+  },
+  {
+    key: 'transactionSignals',
+    label: 'Listings sold',
+    hint: 'Distinct listings marked sold — recorded once both parties confirm the trade.',
+  },
 ];
 
 export interface WeeklyKpi {
   key: WeeklyCoreKpiKey;
   label: string;
+  /** One line saying exactly what the number counts, and over what window. */
+  hint: string;
   metric: WeeklyMetricValue;
   /**
    * Derived from `thisWeek` and `lastWeek` rather than read from the payload's
@@ -30,9 +68,9 @@ export interface WeeklyKpi {
 }
 
 export function readKpis(data: WeeklyMetricsResponse): WeeklyKpi[] {
-  return KPI_ORDER.map(({ key, label }) => {
+  return KPI_ORDER.map(({ key, label, hint }) => {
     const metric = data.coreKpis[key];
-    return { key, label, metric, delta: computeDelta(metric.thisWeek, metric.lastWeek) };
+    return { key, label, hint, metric, delta: computeDelta(metric.thisWeek, metric.lastWeek) };
   });
 }
 

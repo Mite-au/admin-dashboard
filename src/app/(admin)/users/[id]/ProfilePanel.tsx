@@ -11,6 +11,7 @@ import {
   isImageSrc,
 } from '@/lib/format';
 import type { AdminUser } from '@/lib/types';
+import { PenaltyControl } from './PenaltyControl';
 import { ResetActions } from './ResetActions';
 import { UserStatusControl } from './UserStatusControl';
 import { VerificationChecklist } from './VerificationChecklist';
@@ -41,6 +42,21 @@ export function ProfilePanel({ user }: { user: AdminUser }) {
 
         <UserStatusControl userId={user.id} status={user.status} />
       </section>
+
+      {/* A deleted or deleting account is immutable; applying a penalty to
+          one would only mask the deletion as a ban across the dashboard. */}
+      {user.status !== 'deleted' && user.status !== 'pending_deletion' && (
+        <Card
+          title="Account penalty"
+          subtitle={
+            user.status === 'banned'
+              ? 'The only way to unban this account'
+              : 'The only way to ban this account'
+          }
+        >
+          <PenaltyControl userId={user.id} status={user.status} />
+        </Card>
+      )}
 
       <Card title="Verification" subtitle="Admin override for each trusted channel">
         <VerificationChecklist user={user} />

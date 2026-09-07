@@ -11,17 +11,30 @@ function first(v: string | string[] | undefined): string | undefined {
   return v;
 }
 
+/**
+ * A hand-edited `?page=abc` must not become `page=NaN` in the API call —
+ * `qs()` only drops undefined/null/'', so NaN would be stringified into the
+ * query and `@IsInt()` on the DTO would 400 the whole page.
+ */
+function pageParam(v: string | string[] | undefined): number {
+  const n = Number(first(v));
+  return Number.isInteger(n) && n > 0 ? n : 1;
+}
+
 function num(v: string | string[] | undefined): number | undefined {
   const s = first(v);
   if (s === undefined || s === '') return undefined;
   const n = Number(s);
-  return Number.isFinite(n) ? n : undefined;
+  // The backend validates these as non-negative integers (@IsInt @Min(0));
+  // anything else is a 400 that would take the whole page to the error
+  // boundary, so a hand-edited or mistyped value is dropped instead.
+  return Number.isInteger(n) && n >= 0 ? n : undefined;
 }
 
 export default async function ListingsPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const filters: PostFilters = {
-    page: Number(first(sp.page) ?? 1),
+    page: pageParam(sp.page),
     title: first(sp.title),
     priceMin: num(sp.priceMin),
     priceMax: num(sp.priceMax),

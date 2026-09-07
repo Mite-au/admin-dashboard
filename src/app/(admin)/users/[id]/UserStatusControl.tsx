@@ -13,13 +13,24 @@ function isMutableUserStatus(value: string): value is MutableUserStatus {
   return MUTABLE_USER_STATUS_SET.has(value);
 }
 
+const TERMINAL_COPY: Partial<Record<UserStatus, string>> = {
+  banned:
+    'Banned by an active penalty. Lifting it in the card below returns the account to the status it had before the ban.',
+  deleted: 'This account has been deleted and can no longer be changed.',
+  pending_deletion:
+    'This account has requested deletion and is waiting on the deletion pipeline. Its status is not editable from here.',
+};
+
 /**
  * Activate / suspend the account.
  *
- * `banned` and `deleted` are terminal from here: a ban is written by the
- * penalty endpoint and a deletion by the account pipeline, so the control
- * turns into a sentence explaining where the state came from rather than a
- * select that would fail on submit.
+ * `banned`, `deleted` and `pending_deletion` are terminal from here: a ban is
+ * written by the penalty endpoint, and both deletion states by the account
+ * pipeline. `PATCH /admin/users/:id/status` accepts only
+ * active / suspended / deleted / pending_profile, so the control turns into a
+ * sentence explaining where the state came from rather than a select that
+ * would fail on submit — or, worse, a select whose current value has no
+ * matching option and silently displays the first one.
  *
  * Failure is rendered next to the select instead of thrown, because a thrown
  * Server Action error reaches production as an opaque digest — the backend's
@@ -36,15 +47,12 @@ export function UserStatusControl({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  if (status === 'banned' || status === 'deleted') {
+  const terminalCopy = TERMINAL_COPY[status];
+  if (terminalCopy) {
     return (
       <div className="mt-4 rounded-control border border-ink-200 bg-ink-50 px-3 py-2.5">
         <p className="label-micro">Account status</p>
-        <p className="mt-1 text-data text-ink-700">
-          {status === 'banned'
-            ? 'Banned by an active penalty. Lift the penalty to make this account mutable again.'
-            : 'This account has been deleted and can no longer be changed.'}
-        </p>
+        <p className="mt-1 text-data text-ink-700">{terminalCopy}</p>
       </div>
     );
   }

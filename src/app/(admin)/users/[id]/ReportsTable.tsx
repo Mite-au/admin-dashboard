@@ -1,12 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import clsx from 'clsx';
-import { ChevronRight, Package, ShieldCheck, UserRound } from 'lucide-react';
+import { ChevronRight, ShieldCheck } from 'lucide-react';
 import { StatusBadge } from '@/components/StatusBadge';
 import { EmptyState } from '@/components/ui';
 import { formatDateTime, formatRelative } from '@/lib/format';
 import type { AdminReport } from '@/lib/types';
+// The one target-type vocabulary, shared with the Trust & Safety queue. This
+// tab used to carry a private two-way copy that labelled every non-post report
+// "User" — including market and chat-message reports.
+import { TargetTypeChip, formatReportReason } from '@/app/(admin)/trust-safety/ReportTarget';
 import { TableScroll } from './ActivityChrome';
 
 /** Reports filed against this member, or against what they posted. */
@@ -45,15 +49,23 @@ export function ReportsTable({ reports }: { reports: AdminReport[] }) {
               onClick={() => router.push(`/trust-safety/${r.id}`)}
               className="group cursor-pointer"
             >
-              <td className="max-w-[16rem] truncate group-hover:underline">
-                {r.targetTitle ?? r.targetId}
+              <td className="max-w-[16rem] truncate">
+                <Link
+                  href={`/trust-safety/${r.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="rounded-sm group-hover:underline"
+                >
+                  {r.targetTitle || r.targetId || 'Untitled target'}
+                </Link>
               </td>
               <td className="tnum">{r.id}</td>
               <td>
-                <TargetChip targetType={r.targetType} />
+                <TargetTypeChip type={r.targetType} />
               </td>
               <td>{r.reporterName || '—'}</td>
-              <td className="max-w-[14rem] truncate">{r.reason || '—'}</td>
+              <td className="max-w-[14rem] truncate" title={r.reason || undefined}>
+                {formatReportReason(r.reason)}
+              </td>
               <td title={formatDateTime(r.createdAt)}>{formatRelative(r.createdAt)}</td>
               <td className="text-right">
                 <StatusBadge status={r.status} />
@@ -71,27 +83,5 @@ export function ReportsTable({ reports }: { reports: AdminReport[] }) {
         </tbody>
       </table>
     </TableScroll>
-  );
-}
-
-/**
- * Post vs user, carried by an icon and a word rather than a colour — the two
- * are peers, and tinting them would imply a severity difference that isn't
- * there. Severity is the status pill's job.
- */
-function TargetChip({ targetType }: { targetType: AdminReport['targetType'] }) {
-  const isPost = targetType === 'post';
-  const Icon = isPost ? Package : UserRound;
-
-  return (
-    <span
-      className={clsx(
-        'inline-flex items-center gap-1.5 rounded-full bg-ink-100 px-2 py-0.5',
-        'text-2xs font-semibold text-ink-700',
-      )}
-    >
-      <Icon size={11} strokeWidth={2} aria-hidden="true" />
-      {isPost ? 'Post' : 'User'}
-    </span>
   );
 }

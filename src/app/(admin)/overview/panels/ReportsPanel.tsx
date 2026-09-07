@@ -1,7 +1,7 @@
 import { Sparkline, TimeSeriesChart } from '@/components/charts';
 import { Card, StatCard } from '@/components/ui';
-import { formatNumber } from '@/lib/format';
-import { fillDailySeries } from '@/lib/metrics';
+import { formatNumber, formatPercent } from '@/lib/format';
+import { fillDailySeries, safeRate } from '@/lib/metrics';
 import { periodLabel, type PeriodRange } from '@/lib/period';
 import type { ReportsActivityPoint, ReportsOverview } from '@/lib/types';
 import { SectionError, StatGrid, columnOf, invertedPctDelta, pctDelta } from '../parts';
@@ -28,6 +28,8 @@ export function ReportsPanel({
     period.from,
     period.to,
   );
+  // Resolved ÷ filed in the same window: above 100% means the backlog shrank.
+  const resolutionRatio = safeRate(totals.resolvedReportsCount, totals.reportsCreatedCount);
 
   return (
     <>
@@ -53,6 +55,11 @@ export function ReportsPanel({
           value={formatNumber(totals.resolvedReportsCount)}
           delta={
             prev ? pctDelta(totals.resolvedReportsCount, prev.resolvedReportsCount) : undefined
+          }
+          hint={
+            resolutionRatio === null
+              ? 'Nothing filed this period'
+              : `${formatPercent(resolutionRatio, { digits: 0 })} of the number filed`
           }
         />
       </StatGrid>

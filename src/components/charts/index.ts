@@ -12,6 +12,7 @@ export { ChartTooltip, type ChartTooltipProps } from './ChartTooltip';
 export { ComparisonBars, type ComparisonBarsProps, type ComparisonRow } from './ComparisonBars';
 export { DonutChart, type DonutChartProps, type DonutDatum } from './DonutChart';
 export { FunnelSteps, type FunnelStageInput, type FunnelStepsProps } from './FunnelSteps';
+export { FunnelStrip, type FunnelStripProps, type FunnelStripStage } from './FunnelStrip';
 export { Sparkline, type SparklineProps } from './Sparkline';
 export {
   TimeSeriesChart,

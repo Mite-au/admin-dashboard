@@ -1,6 +1,7 @@
+import { TriangleAlert } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Topbar } from '@/components/Topbar';
-import { getWeeklyMetrics } from '@/lib/fetchers';
+import { getWeeklyMetrics, optional } from '@/lib/fetchers';
 import { WeeklyReviewClient } from './WeeklyReviewClient';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -13,11 +14,12 @@ function first(value: string | string[] | undefined): string | undefined {
  * `getWeeklyMetrics` normalises at the boundary: all five week boundaries are
  * rebuilt from whichever anchor the backend sent, and every core KPI is
  * present with its unit resolved. The page used to repeat that work; there is
- * nothing left here to defend against.
+ * nothing left here to defend against except the request itself never
+ * returning, which no amount of normalisation can fill in.
  */
 export default async function WeeklyReviewPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const data = await getWeeklyMetrics(first(params.date));
+  const data = await optional(getWeeklyMetrics(first(params.date)));
 
   return (
     <>
@@ -26,7 +28,37 @@ export default async function WeeklyReviewPage({ searchParams }: { searchParams:
         title="Weekly Review"
         description="Five core marketplace signals for one ISO week, against the week before it."
       />
-      <WeeklyReviewClient data={data} />
+      {data === null ? (
+        <div className="px-8 pb-10">
+          <LoadError />
+        </div>
+      ) : (
+        <WeeklyReviewClient data={data} />
+      )}
     </>
+  );
+}
+
+/**
+ * The fetch failed. Stated where the cards would be rather than as an empty
+ * state: nothing is missing from the data, the request is.
+ */
+function LoadError() {
+  return (
+    <div
+      role="status"
+      className="flex items-start gap-2.5 rounded-panel border border-danger-100 bg-danger-50 px-4 py-3"
+    >
+      <TriangleAlert
+        aria-hidden="true"
+        size={16}
+        strokeWidth={2}
+        className="mt-px shrink-0 text-danger-700"
+      />
+      <p className="text-data text-danger-700">
+        <span className="font-semibold">The weekly review</span> could not be loaded
+        for this week. Refresh to try again.
+      </p>
+    </div>
   );
 }

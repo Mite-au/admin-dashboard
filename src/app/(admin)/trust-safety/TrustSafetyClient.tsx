@@ -17,16 +17,21 @@ import type {
   AdminReportTargetType,
   Paged,
 } from '@/lib/types';
-import { TargetTypeChip, targetHref } from './ReportTarget';
+import {
+  REPORT_TARGET_TYPES,
+  TargetTypeChip,
+  formatReportReason,
+  targetHref,
+  targetMeta,
+} from './ReportTarget';
 
 type ReportTargetTypeFilterValue = AdminReportTargetType | '';
 type ReportStatusFilterValue = AdminReportStatus | '';
 
 const TARGET_TYPE_OPTIONS: ReadonlyArray<{ value: ReportTargetTypeFilterValue; label: string }> = [
   { value: '', label: 'All targets' },
-  { value: 'post', label: 'Post' },
-  { value: 'user', label: 'User' },
-] as const;
+  ...REPORT_TARGET_TYPES.map((value) => ({ value, label: targetMeta(value).label })),
+];
 
 const STATUS_OPTIONS: ReadonlyArray<{ value: ReportStatusFilterValue; label: string }> = [
   { value: '', label: 'All statuses' },
@@ -97,10 +102,10 @@ export function TrustSafetyClient({
   const handleExport = () => {
     const csvRows = rows.map((r) => ({
       reportId: r.id,
-      type: r.targetType,
-      target: r.targetTitle ?? r.targetId,
+      type: targetMeta(r.targetType).label,
+      target: r.targetTitle || r.targetId,
       reporter: r.reporterName,
-      reason: r.reason,
+      reason: formatReportReason(r.reason),
       status: r.status,
       date: formatDateTime(r.createdAt),
     }));
@@ -185,7 +190,7 @@ export function TrustSafetyClient({
             <EmptyState
               icon={ShieldCheck}
               title="Nothing has been reported"
-              description="When a member reports a post or another member, it lands here for review."
+              description="When a member reports a listing, another member, or a message, it lands here for review."
             />
           )
         ) : (
@@ -219,14 +224,19 @@ export function TrustSafetyClient({
                           <Link
                             href={href}
                             onClick={(e) => e.stopPropagation()}
-                            title={`Open the reported ${r.targetType}`}
+                            title={`Open the reported ${targetMeta(r.targetType).label.toLowerCase()}`}
                             className="block max-w-[16rem] truncate font-medium text-ink-900 hover:text-brand-600 hover:underline"
                           >
-                            {r.targetTitle ?? r.targetId}
+                            {r.targetTitle || r.targetId}
                           </Link>
                         ) : (
-                          <span className="block max-w-[16rem] truncate font-medium text-ink-900">
-                            {r.targetTitle ?? r.targetId}
+                          // Market listings and chat messages have no admin
+                          // page, so the cell identifies the target and stops.
+                          <span
+                            title={r.targetId ? `${targetMeta(r.targetType).label} ${r.targetId}` : undefined}
+                            className="block max-w-[16rem] truncate font-medium text-ink-900"
+                          >
+                            {r.targetTitle || r.targetId || '—'}
                           </span>
                         )}
                       </td>
@@ -238,10 +248,10 @@ export function TrustSafetyClient({
                           {formatRelative(r.createdAt)}
                         </span>
                       </td>
-                      <td className="max-w-[14rem] truncate" title={r.reason}>
-                        {r.reason}
+                      <td className="max-w-[14rem] truncate" title={r.reason || undefined}>
+                        {formatReportReason(r.reason)}
                       </td>
-                      <td className="max-w-[12rem] truncate">{r.reporterName}</td>
+                      <td className="max-w-[12rem] truncate">{r.reporterName || '—'}</td>
                       <td>
                         <Link
                           href={`/trust-safety/${r.id}`}

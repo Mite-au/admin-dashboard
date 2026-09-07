@@ -5,7 +5,7 @@ import { ShoppingBag } from 'lucide-react';
 import { StatusBadge } from '@/components/StatusBadge';
 import { EmptyState } from '@/components/ui';
 import { formatDateTime, formatMoney, formatRelative } from '@/lib/format';
-import type { AdminUserPurchase, Paged } from '@/lib/types';
+import type { AdminPurchaseParty, AdminUserPurchase, Paged } from '@/lib/types';
 import { TableScroll, TruncationNote } from './ActivityChrome';
 
 /** What this member has bought, newest first as the backend returns it. */
@@ -46,7 +46,9 @@ export function PurchasesTable({ purchases }: { purchases: Paged<AdminUserPurcha
                     </Link>
                   </td>
                   <td className="tnum">i{t.postId}</td>
-                  <td>{t.seller || '—'}</td>
+                  <td>
+                    <PartyCell party={t.seller} />
+                  </td>
                   <td>{t.category ?? '—'}</td>
                   <td className="tnum text-right text-ink-900">
                     {formatMoney(t.amount, t.currency)}
@@ -64,5 +66,33 @@ export function PurchasesTable({ purchases }: { purchases: Paged<AdminUserPurcha
 
       <TruncationNote shown={purchases.items.length} total={purchases.total} noun="purchases" />
     </>
+  );
+}
+
+/**
+ * A counterparty on a purchase.
+ *
+ * This endpoint sends `{ id, name, email }` where its sibling
+ * `/admin/transactions` sends a plain string for the same thing, and rendering
+ * the value directly threw "Objects are not valid as a React child" — the
+ * whole Purchases tab went to the error boundary. The name is the label, the
+ * email is the fallback for an account that never set one, and the id is the
+ * last resort so the cell still identifies *someone*.
+ */
+function PartyCell({ party }: { party: AdminPurchaseParty | null }) {
+  if (!party) return <span className="text-ink-400">—</span>;
+
+  const label = party.name || party.email || (party.id ? `m${party.id}` : '');
+  if (!label) return <span className="text-ink-400">—</span>;
+  if (!party.id) return <span>{label}</span>;
+
+  return (
+    <Link
+      href={`/users/${party.id}`}
+      title={party.email ?? undefined}
+      className="rounded-sm hover:underline"
+    >
+      {label}
+    </Link>
   );
 }

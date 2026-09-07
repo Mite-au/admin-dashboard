@@ -16,6 +16,7 @@ import type {
   PostStatus,
   ThreadAdminStatus,
   ThreadRequestStatus,
+  UserPenaltyResult,
 } from './types';
 
 type MutableUserStatus = 'active' | 'suspended' | 'pending_profile';
@@ -78,6 +79,37 @@ export async function updateUserStatus(
     // The request succeeded, so the value we asked for is the best available
     // truth when the backend doesn't echo one back.
     (raw) => ({ id: str(get(raw, 'id'), id), status: str(get(raw, 'status'), status) }),
+  );
+}
+
+/**
+ * Apply or lift an account penalty.
+ *
+ * This is the **only** ban/unban path: `users.status` has no `banned` member,
+ * and `PATCH /admin/users/:id/status` explicitly refuses one. The synthetic
+ * `banned` status the list and detail endpoints return is derived from
+ * `user_penalties.active`, so it can only be changed here.
+ *
+ * `reason` is optional on the DTO and capped at 500 characters. It is trimmed
+ * and omitted when blank rather than sent as `""` — the field is an audit
+ * trail, and an empty string in it is worse than no entry.
+ */
+export async function setUserPenalty(
+  id: string,
+  active: boolean,
+  reason?: string,
+): Promise<UserPenaltyResult> {
+  const trimmed = reason?.trim();
+  return mutate(
+    `setUserPenalty(${id}, ${active})`,
+    api(`/admin/users/${id}/penalty`, {
+      method: 'POST',
+      body: JSON.stringify(trimmed ? { active, reason: trimmed } : { active }),
+    }),
+    (raw) => ({
+      userId: str(get(raw, 'userId'), id),
+      hasPenalty: bool(get(raw, 'hasPenalty'), active),
+    }),
   );
 }
 
@@ -277,6 +309,14 @@ export async function updateUserStatusResult(
   status: MutableUserStatus,
 ): Promise<ActionResult> {
   return toActionResult(() => updateUserStatus(id, status));
+}
+
+export async function setUserPenaltyResult(
+  id: string,
+  active: boolean,
+  reason?: string,
+): Promise<ActionResult> {
+  return toActionResult(() => setUserPenalty(id, active, reason));
 }
 
 export async function updateSuburbVerificationResult(

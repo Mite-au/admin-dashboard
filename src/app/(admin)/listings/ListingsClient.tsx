@@ -14,6 +14,12 @@ import { formatDateTime, formatMoney, formatRelative, isImageSrc } from '@/lib/f
 import type { PostFilters } from '@/lib/fetchers';
 import type { AdminPost, Paged } from '@/lib/types';
 
+/**
+ * The six real `posts_status` members plus `reported`, a synthetic filter the
+ * backend resolves to "has at least one post report" — the moderation view for
+ * this list. An empty value sends no `status`, which is what the backend's own
+ * `all` means, so there is no separate "all" option to add.
+ */
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
   { value: 'published', label: 'Published' },
@@ -21,6 +27,8 @@ const STATUS_OPTIONS = [
   { value: 'sold', label: 'Sold' },
   { value: 'paused', label: 'Paused' },
   { value: 'archived', label: 'Archived' },
+  { value: 'deleted', label: 'Deleted' },
+  { value: 'reported', label: 'Reported' },
 ] as const;
 
 function formatCondition(condition: string | null | undefined) {

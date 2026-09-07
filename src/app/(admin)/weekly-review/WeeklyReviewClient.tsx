@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { ChevronLeft, ChevronRight, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Card, EmptyState, StatCard } from '@/components/ui';
-import { addDays, periodLabel, todayDayKey, weekStartKey } from '@/lib/period';
+import { addDays, periodLabel, weekStartKey } from '@/lib/period';
 import type { WeeklyMetricsResponse } from '@/lib/types';
 import { WeekPicker } from './WeekPicker';
 import { kpiDeltaChip, kpiPriorValue, kpiValue, pickMovers, readKpis, type WeeklyKpi } from './kpis';
@@ -16,7 +16,9 @@ export function WeeklyReviewClient({ data }: { data: WeeklyMetricsResponse }) {
 
   const thisWeek = { from: data.week.thisWeekStart, to: data.week.thisWeekEnd };
   const lastWeek = { from: data.week.lastWeekStart, to: data.week.lastWeekEnd };
-  const currentMonday = weekStartKey(todayDayKey());
+  // The endpoint anchors weeks in UTC, so the comparison must too: a Sydney
+  // Monday morning is still the previous UTC week for an hour or so.
+  const currentMonday = weekStartKey(new Date().toISOString().slice(0, 10));
   const isCurrentWeek = data.week.thisWeekStart === currentMonday;
 
   // A real navigation, unlike the overview's tab state: a different week is a
@@ -85,6 +87,13 @@ export function WeeklyReviewClient({ data }: { data: WeeklyMetricsResponse }) {
             </div>
           </dl>
         </div>
+
+        <p className="mt-5 border-t border-ink-100 pt-4 text-data leading-relaxed text-ink-500">
+          Weeks run Monday to Sunday in UTC, so an Australian Monday morning still
+          counts against the week before. All five figures lean on analytics events
+          rather than the tables, so each one starts on the day its event shipped and
+          quietly under-counts anything that happened before that.
+        </p>
       </Card>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
@@ -94,7 +103,12 @@ export function WeeklyReviewClient({ data }: { data: WeeklyMetricsResponse }) {
             label={kpi.label}
             value={kpiValue(kpi.metric)}
             delta={kpiDeltaChip(kpi)}
-            hint={`vs ${kpiPriorValue(kpi.metric)}`}
+            hint={kpi.hint}
+            footer={
+              <p className="tnum text-xs text-ink-500">
+                Last week {kpiPriorValue(kpi.metric)}
+              </p>
+            }
           />
         ))}
       </div>

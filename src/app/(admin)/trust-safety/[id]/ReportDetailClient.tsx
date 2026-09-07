@@ -9,7 +9,13 @@ import { Card } from '@/components/ui';
 import { formatDateTime, formatRelative } from '@/lib/format';
 import { updateReportStatusResult } from '@/lib/actions';
 import type { AdminReport, AdminReportStatus } from '@/lib/types';
-import { TargetTypeChip, reporterHref, targetHref, targetMeta } from '../ReportTarget';
+import {
+  TargetTypeChip,
+  formatReportReason,
+  reporterHref,
+  targetHref,
+  targetMeta,
+} from '../ReportTarget';
 
 export function ReportDetailClient({ report }: { report: AdminReport }) {
   const router = useRouter();
@@ -48,8 +54,11 @@ export function ReportDetailClient({ report }: { report: AdminReport }) {
           <div className="space-y-5">
             <div>
               <p className="label-micro mb-1.5">Reason</p>
-              <p className="text-[0.9375rem] font-semibold leading-snug text-ink-900">
-                {report.reason || 'No reason was selected.'}
+              <p
+                title={report.reason || undefined}
+                className="text-[0.9375rem] font-semibold leading-snug text-ink-900"
+              >
+                {report.reason ? formatReportReason(report.reason) : 'No reason was selected.'}
               </p>
             </div>
 
@@ -83,7 +92,7 @@ export function ReportDetailClient({ report }: { report: AdminReport }) {
       <div className="space-y-6 lg:col-span-5">
         <Card title="Target" actions={<TargetTypeChip type={report.targetType} />}>
           <p className="break-words text-data font-medium text-ink-900">
-            {report.targetTitle ?? report.targetId ?? '—'}
+            {report.targetTitle || report.targetId || '—'}
           </p>
           {report.targetTitle && report.targetId && (
             <p className="mt-1 font-mono text-2xs text-ink-500">{report.targetId}</p>

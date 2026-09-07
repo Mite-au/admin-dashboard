@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import clsx from 'clsx';
-import { PRESETS, getPresetRange, resolvePeriod } from '@/lib/period';
+import { PRESETS, getPresetRange, resolvePeriod, todayDayKey } from '@/lib/period';
 import type { PeriodPreset } from '@/lib/period';
 
 /**
@@ -18,6 +18,8 @@ export function PeriodSelector() {
   const searchParams = useSearchParams();
 
   const current = resolvePeriod(searchParams);
+  // Nothing is bucketed past today; a future date only ever produces zeros.
+  const today = todayDayKey();
 
   const [customFrom, setCustomFrom] = useState<string>(
     current.preset === 'custom' ? current.from : '',
@@ -99,7 +101,7 @@ export function PeriodSelector() {
             type="date"
             aria-label="From date"
             value={customFrom}
-            max={customTo || undefined}
+            max={customTo || today}
             onChange={(e) => setCustomFrom(e.target.value)}
             className="tnum rounded-control border border-ink-200 bg-white px-2.5 py-1.5 text-data
                        text-ink-900 transition-colors hover:border-ink-300
@@ -113,6 +115,7 @@ export function PeriodSelector() {
             aria-label="To date"
             value={customTo}
             min={customFrom || undefined}
+            max={today}
             onChange={(e) => setCustomTo(e.target.value)}
             className="tnum rounded-control border border-ink-200 bg-white px-2.5 py-1.5 text-data
                        text-ink-900 transition-colors hover:border-ink-300

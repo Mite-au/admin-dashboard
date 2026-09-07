@@ -13,6 +13,19 @@ import { formatDate, formatDateTime, formatMoney, formatNumber } from '@/lib/for
 import type { TransactionFilters } from '@/lib/fetchers';
 import type { AdminTransaction, Paged } from '@/lib/types';
 
+/**
+ * What `AdminTransactionsService.listTransactions` recognises. Anything else
+ * returns an empty page rather than an error, so the select is the only place
+ * this vocabulary is stated. An empty value sends no `status`, which is what
+ * the backend's own `all` means.
+ */
+const STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+] as const;
+
 const CSV_COLUMNS = [
   { key: 'transactionId', label: 'Transaction ID' },
   { key: 'item', label: 'Item' },
@@ -39,16 +52,29 @@ export function TransactionsClient({
   const [buyer, setBuyer] = useState(filters.buyer ?? '');
   const [seller, setSeller] = useState(filters.seller ?? '');
   const [transactionId, setTransactionId] = useState(filters.transactionId ?? '');
+  const [status, setStatus] = useState(filters.status ?? '');
 
   const rows = data.items;
   const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
   const hasFilters = Boolean(
-    filters.postTitle || filters.buyer || filters.seller || filters.transactionId,
+    filters.postTitle ||
+      filters.buyer ||
+      filters.seller ||
+      filters.transactionId ||
+      filters.status,
   );
 
   const pushFilters = (next: Partial<Record<string, string | number | undefined>>) => {
     const merged: Record<string, string> = {};
-    const final = { postTitle, buyer, seller, transactionId, page: filters.page, ...next };
+    const final = {
+      postTitle,
+      buyer,
+      seller,
+      transactionId,
+      status,
+      page: filters.page,
+      ...next,
+    };
     for (const [k, v] of Object.entries(final)) {
       if (v === undefined || v === null || v === '') continue;
       merged[k] = String(v);
@@ -67,6 +93,7 @@ export function TransactionsClient({
     setBuyer('');
     setSeller('');
     setTransactionId('');
+    setStatus('');
     startTransition(() => router.replace(pathname));
   };
 
@@ -129,6 +156,23 @@ export function TransactionsClient({
               value={transactionId}
               onChange={(e) => setTransactionId(e.target.value)}
             />
+          </SearchField>
+          <SearchField label="Status">
+            <select
+              className="pill-select"
+              aria-label="Status"
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                pushFilters({ status: e.target.value, page: 1 });
+              }}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </SearchField>
         </SearchCard>
       </form>

@@ -14,7 +14,10 @@ function num(v: string | string[] | undefined): number | undefined {
   const s = first(v);
   if (s === undefined || s === '') return undefined;
   const n = Number(s);
-  return Number.isFinite(n) ? n : undefined;
+  // The backend validates these as non-negative integers (@IsInt @Min(0));
+  // anything else is a 400 that would take the whole page to the error
+  // boundary, so a hand-edited or mistyped value is dropped instead.
+  return Number.isInteger(n) && n >= 0 ? n : undefined;
 }
 
 /** A hand-edited `?page=abc` must not become `page=NaN` in the API call. */
@@ -29,8 +32,6 @@ export default async function ThreadsPage({ searchParams }: { searchParams: Sear
     page: pageParam(sp.page),
     name: first(sp.name),
     type: first(sp.type),
-    regionCode: first(sp.regionCode),
-    interestKey: first(sp.interestKey),
     status: first(sp.status),
     minMembers: num(sp.minMembers),
     memberId: first(sp.memberId),
@@ -42,7 +43,7 @@ export default async function ThreadsPage({ searchParams }: { searchParams: Sear
       <Topbar breadcrumbs={[{ label: 'Thread', href: '/threads' }]} />
       <PageHeader
         title="Thread"
-        description="Every community thread, its region and interest wiring, and how much traffic it carries. Threads that predate the region model are marked Legacy."
+        description="Every community thread, how much traffic it carries, and its moderation status. Open a row for the full record."
       />
       <ThreadsClient data={data} filters={filters} />
     </>

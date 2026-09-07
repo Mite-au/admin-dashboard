@@ -1,9 +1,11 @@
-import { TriangleAlert } from 'lucide-react';
+import { ArrowUpRight, TriangleAlert } from 'lucide-react';
 import clsx from 'clsx';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { StatDelta } from '@/components/ui';
 import { formatDeltaPoints } from '@/lib/format';
 import { computeDelta, formatDelta } from '@/lib/metrics';
+import { buildPeriodParams, type PeriodParams } from '@/lib/period';
 
 /**
  * Delta builders for `StatCard`.
@@ -42,6 +44,38 @@ export function invertedPctDelta(current: number, previous: number): StatDelta {
 export function pointsDelta(current: number, previous: number): StatDelta {
   const delta = computeDelta(current, previous);
   return { raw: delta.raw, formatted: formatDeltaPoints(delta.raw) };
+}
+
+/** `pointsDelta` for a rate where up is bad — zero-result share, drop-off. */
+export function invertedPointsDelta(current: number, previous: number): StatDelta {
+  const delta = computeDelta(current, previous);
+  return { raw: -delta.raw, formatted: formatDeltaPoints(delta.raw) };
+}
+
+/**
+ * Href for a sibling page that carries the selected window along, so "Full
+ * funnel" opens on the same dates the digest was showing.
+ */
+export function periodHref(
+  pathname: string,
+  period: PeriodParams,
+  extra: Record<string, string> = {},
+): string {
+  const params = new URLSearchParams({ ...extra, ...buildPeriodParams(period) });
+  return `${pathname}?${params.toString()}`;
+}
+
+/** Quiet "open the full page" link for a card header. */
+export function DetailLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1 rounded-control text-2xs font-semibold text-ink-600 hover:text-ink-900"
+    >
+      {children}
+      <ArrowUpRight aria-hidden="true" size={13} strokeWidth={2.25} />
+    </Link>
+  );
 }
 
 /**

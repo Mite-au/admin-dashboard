@@ -8,6 +8,7 @@ import {
   updateContactVerificationResult,
   updateSuburbVerificationResult,
 } from '@/lib/actions';
+import { boolOrNull } from '@/lib/guards';
 import type { ActionResult, AdminUser } from '@/lib/types';
 
 /**
@@ -36,10 +37,14 @@ export function VerificationChecklist({ user }: { user: AdminUser }) {
         missingLabel="No phone number on file"
         onToggle={(next) => updateContactVerificationResult(user.id, 'phone', next)}
       />
+      {/* `suburbVerified` is tri-state: null means the profile has no suburb
+          at all, which is not the same claim as "has one, not yet verified".
+          Collapsing it with Boolean() showed those accounts as unverified. */}
       <VerificationRow
         label="Suburb"
         value={user.suburb}
-        verified={Boolean(user.suburbVerified)}
+        verified={boolOrNull(user.suburbVerified)}
+        unknownLabel="No suburb"
         missingLabel="No suburb set"
         onToggle={(next) => updateSuburbVerificationResult(user.id, next)}
       />
@@ -52,20 +57,35 @@ function VerificationRow({
   value,
   verified,
   missingLabel,
+  unknownLabel,
   onToggle,
 }: {
   label: string;
   value?: string | null;
-  verified: boolean;
+  /** `null` = the backend has nothing to verify against, which is distinct
+   *  from a `false` that means "on file, not yet verified". */
+  verified: boolean | null;
   missingLabel: string;
+  unknownLabel?: string;
   onToggle: (next: boolean) => Promise<ActionResult>;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const onFile = Boolean(value);
-  const Icon = verified ? CircleCheck : CircleDashed;
+  // Nothing to toggle when the channel is missing or the flag is unknown —
+  // the backend rejects both, so the button is withheld rather than offered
+  // and then failed.
+  const onFile = Boolean(value) && verified !== null;
+  const Icon = verified === true ? CircleCheck : CircleDashed;
+  const stateLabel =
+    verified === null
+      ? (unknownLabel ?? 'Not recorded')
+      : !onFile
+        ? 'Nothing to verify'
+        : verified
+          ? 'Verified'
+          : 'Not verified';
 
   const handleClick = () => {
     if (isPending) return;
@@ -86,7 +106,7 @@ function VerificationRow({
         size={16}
         strokeWidth={2}
         aria-hidden="true"
-        className={clsx('mt-0.5 shrink-0', verified ? 'text-success-700' : 'text-ink-300')}
+        className={clsx('mt-0.5 shrink-0', verified === true ? 'text-success-700' : 'text-ink-300')}
       />
 
       <div className="min-w-0 flex-1">
@@ -98,7 +118,7 @@ function VerificationRow({
               !onFile ? 'text-ink-400' : verified ? 'text-success-700' : 'text-warning-700',
             )}
           >
-            {!onFile ? 'Nothing to verify' : verified ? 'Verified' : 'Not verified'}
+            {stateLabel}
           </span>
         </div>
 

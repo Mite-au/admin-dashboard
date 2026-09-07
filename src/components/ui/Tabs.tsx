@@ -20,11 +20,14 @@ export function Tabs({
   active,
   onChange,
   className,
+  controls,
 }: {
   tabs: TabItem[];
   active: string;
   onChange: (id: string) => void;
   className?: string;
+  /** id of the panel these tabs switch, for `aria-controls`. */
+  controls?: string;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -60,6 +63,7 @@ export function Tabs({
             type="button"
             role="tab"
             aria-selected={isActive}
+            aria-controls={controls}
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, i)}

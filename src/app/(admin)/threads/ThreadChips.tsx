@@ -12,6 +12,11 @@ type ThreadModelInput = Parameters<typeof getThreadModelLabel>[0];
  * instead. "Legacy" is the one value that *is* a signal — a thread that
  * predates the region model and still needs migrating — so it takes the
  * warning tint and earns its colour.
+ *
+ * The chip renders nothing at all when the model can't be determined. The
+ * admin thread endpoints send none of the three codes, and chipping every row
+ * "Legacy" off the back of that was asserting a migration problem from missing
+ * data rather than from data.
  */
 const MODEL_STYLES: Record<ThreadModelLabel, string> = {
   'Regional General': 'bg-ink-100 text-ink-700',
@@ -27,6 +32,8 @@ const MODEL_TITLES: Record<ThreadModelLabel, string> = {
 
 export function ThreadModelChip({ thread }: { thread: ThreadModelInput }) {
   const label = getThreadModelLabel(thread);
+  if (!label) return null;
+
   return (
     <span
       title={MODEL_TITLES[label]}

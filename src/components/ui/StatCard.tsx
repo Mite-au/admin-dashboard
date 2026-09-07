@@ -54,7 +54,11 @@ export function StatCard({
   );
 }
 
-function DeltaChip({ delta }: { delta: StatDelta }) {
+/**
+ * The period-over-period chip on its own, for a tile that is not a StatCard
+ * (a headline figure inside a Card). Same contract: sign picks the colour.
+ */
+export function DeltaChip({ delta }: { delta: StatDelta }) {
   const direction = delta.raw > 0 ? 'up' : delta.raw < 0 ? 'down' : 'flat';
   const Icon = direction === 'up' ? ArrowUpRight : direction === 'down' ? ArrowDownRight : Minus;
 

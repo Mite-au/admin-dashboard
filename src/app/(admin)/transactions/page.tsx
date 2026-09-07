@@ -24,6 +24,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     buyer: first(sp.buyer),
     seller: first(sp.seller),
     transactionId: first(sp.transactionId),
+    status: first(sp.status),
   };
   const data = await getTransactions(filters);
 

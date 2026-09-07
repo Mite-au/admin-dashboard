@@ -19,5 +19,5 @@ export function middleware(req: NextRequest) {
 export const config = {
   // Run on everything except the login page, login/logout routes, and Next
   // asset pipeline. Anything else requires auth.
-  matcher: ['/((?!login|api/login|api/logout|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!login|api/login|api/logout|_next/static|_next/image|favicon.ico|icon.png|brand/).*)'],
 };

@@ -2,6 +2,7 @@ import { Topbar } from '@/components/Topbar';
 import { PageHeader } from '@/components/PageHeader';
 import { getReports, type ReportFilters } from '@/lib/fetchers';
 import type { AdminReportStatus, AdminReportTargetType } from '@/lib/types';
+import { REPORT_TARGET_TYPES } from './ReportTarget';
 import { TrustSafetyClient } from './TrustSafetyClient';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -21,8 +22,15 @@ function parseReportStatus(value: string | undefined): AdminReportStatus | undef
   return value === 'open' || value === 'resolved' ? value : undefined;
 }
 
+/**
+ * `targetType` is `@IsIn`-validated on the backend across all five members, so
+ * an unknown value would be a 400 rather than an ignored filter. Anything not
+ * in the union is dropped from the URL instead.
+ */
 function parseReportTargetType(value: string | undefined): AdminReportTargetType | undefined {
-  return value === 'post' || value === 'user' ? value : undefined;
+  return REPORT_TARGET_TYPES.includes(value as AdminReportTargetType)
+    ? (value as AdminReportTargetType)
+    : undefined;
 }
 
 export default async function TrustSafetyPage({ searchParams }: { searchParams: SearchParams }) {
@@ -39,7 +47,7 @@ export default async function TrustSafetyPage({ searchParams }: { searchParams: 
       <Topbar breadcrumbs={[{ label: 'Trust & Safety', href: '/trust-safety' }]} />
       <PageHeader
         title="Trust & Safety"
-        description="What members have reported about each other's posts and profiles. Open a report to read the evidence and mark it resolved."
+        description="What members have reported about each other's posts, profiles and messages. Open a report to read the evidence and mark it resolved."
       />
       <TrustSafetyClient data={data} filters={filters} />
     </>
