@@ -256,9 +256,9 @@ function normaliseOverviewStats(raw: unknown, period: PeriodFilter = {}): Overvi
       verifiedUsers: count(get(t, 'verifiedUsers')),
       activeListings: count(get(t, 'activeListings')),
       openReports: count(get(t, 'openReports')),
-      // Optional in the contract and left optional here: it's a proxy metric
-      // the backend doesn't always compute, and a card reading "—" is more
-      // truthful than one reading "0 sold".
+      // Optional in the contract and left optional here: the backend doesn't
+      // always compute it, and a card reading "—" is more truthful than one
+      // reading "0 sold".
       soldPosts: numOrNull(get(t, 'soldPosts')) ?? undefined,
       revenue: numOrNull(get(t, 'revenue')) ?? undefined,
     },
@@ -690,6 +690,7 @@ const POST_STATUSES: readonly PostStatus[] = [
   'paused',
   'archived',
   'deleted',
+  'reserved',
 ];
 
 const PURCHASE_STATUSES: readonly PurchaseStatus[] = ['pending', 'completed', 'cancelled'];

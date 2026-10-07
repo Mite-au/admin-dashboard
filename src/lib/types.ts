@@ -1,5 +1,12 @@
 // Mirror the Prisma schema for types used across the dashboard.
-export type PostStatus = 'draft' | 'published' | 'sold' | 'paused' | 'archived' | 'deleted';
+export type PostStatus =
+  | 'draft'
+  | 'published'
+  | 'sold'
+  | 'paused'
+  | 'archived'
+  | 'deleted'
+  | 'reserved';
 export type ThreadAdminStatus = 'active' | 'flagged' | 'archived' | 'hidden';
 /**
  * The only two values any admin thread endpoint emits. The DB enum also has
@@ -345,8 +352,10 @@ export interface OverviewTotals {
   verifiedUsers: number;
   activeListings: number;
   openReports: number;
-  /** Posts with status=sold. Proxy only — not a confirmed transaction count.
-   *  Absent (not 0) when the backend doesn't compute it. */
+  /** Posts with status=sold. A listing becomes sold when both sides confirm
+   *  the trade, or through an admin override. Reserved listings count as
+   *  neither active nor sold. Absent (not 0) when the backend doesn't compute
+   *  it. */
   soldPosts?: number;
   /** Whole AUD. Sum of the asking prices of sold posts — a liquidity proxy,
    *  not takings. Absent when the backend doesn't compute it. */
