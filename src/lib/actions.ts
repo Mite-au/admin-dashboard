@@ -20,7 +20,9 @@ import type {
 } from './types';
 
 type MutableUserStatus = 'active' | 'suspended' | 'pending_profile';
-type MutablePostStatus = PostStatus;
+/** `reserved` is left out. The backend accepts it, but one set from here would
+ *  hold the listing for no buyer, since no holder conversation comes with it. */
+type MutablePostStatus = Exclude<PostStatus, 'reserved'>;
 type MutableThreadStatus = ThreadAdminStatus;
 
 /**
@@ -174,7 +176,7 @@ export async function updatePostStatus(
       id: str(get(raw, 'id'), id),
       status: oneOf<PostStatus>(
         get(raw, 'status'),
-        ['draft', 'published', 'sold', 'paused', 'archived', 'deleted'],
+        ['draft', 'published', 'sold', 'paused', 'archived', 'deleted', 'reserved'],
         status,
       ),
     }),
