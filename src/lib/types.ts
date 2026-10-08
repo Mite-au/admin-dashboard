@@ -132,8 +132,22 @@ export interface AdminPost {
  */
 export type PurchaseStatus = 'pending' | 'completed' | 'cancelled';
 
+/**
+ * What a trade row was built from, on both `/admin/transactions` and
+ * `/admin/users/:id/purchases`.
+ *
+ * `accepted_offer`: an accepted offer; the row id is the offer's. `free_trade`:
+ * a meet-up both parties confirmed on a Free listing, which takes no offers —
+ * so there is no offer behind the row (`offerId` is null on purchases), its
+ * amount is 0, its status is always completed, and its id is `f` + the
+ * appointment id. A backend from before Free trades sends no `sourceType`, and
+ * every row it sends is an accepted offer.
+ */
+export type TradeSourceType = 'accepted_offer' | 'free_trade';
+
 export interface AdminTransaction {
   id: string;
+  sourceType: TradeSourceType;
   postId: string;
   postTitle: string;
   /** Flattened to a display string by `/admin/transactions` — unlike the
@@ -176,7 +190,8 @@ export interface AdminUserPurchase {
   createdAt: string;
   completedAt?: string | null;
   cancelledAt?: string | null;
-  sourceType?: string | null;
+  sourceType: TradeSourceType;
+  /** Null on a Free trade, which has no offer. */
   offerId?: string | null;
   appointmentId?: string | null;
 }
