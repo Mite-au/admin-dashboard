@@ -54,6 +54,7 @@ import type {
   ThreadRequestStatus,
   ThreadType,
   ThreadsOverview,
+  TradeSourceType,
   TransactionsOverview,
   UserLoginMethod,
   UserLoginsResponse,
@@ -694,6 +695,10 @@ const POST_STATUSES: readonly PostStatus[] = [
 
 const PURCHASE_STATUSES: readonly PurchaseStatus[] = ['pending', 'completed', 'cancelled'];
 
+/** The fallback, `accepted_offer`, is what a backend from before Free trades
+ *  means by a row with no `sourceType`. */
+const TRADE_SOURCE_TYPES: readonly TradeSourceType[] = ['accepted_offer', 'free_trade'];
+
 const THREAD_ADMIN_STATUSES: readonly ThreadAdminStatus[] = [
   'active',
   'flagged',
@@ -785,6 +790,11 @@ function normaliseTransaction(raw: unknown): AdminTransaction | null {
   if (!id) return null;
   return {
     id,
+    sourceType: oneOf<TradeSourceType>(
+      get(raw, 'sourceType'),
+      TRADE_SOURCE_TYPES,
+      'accepted_offer',
+    ),
     postId: str(get(raw, 'postId')),
     postTitle: str(get(raw, 'postTitle')),
     // Already flattened to a display string by this endpoint — but if it ever
@@ -847,7 +857,11 @@ function normalisePurchase(raw: unknown): AdminUserPurchase | null {
     createdAt,
     completedAt: isoOrNull(get(raw, 'completedAt')),
     cancelledAt: isoOrNull(get(raw, 'cancelledAt')),
-    sourceType: trimmedOrNull(get(raw, 'sourceType')),
+    sourceType: oneOf<TradeSourceType>(
+      get(raw, 'sourceType'),
+      TRADE_SOURCE_TYPES,
+      'accepted_offer',
+    ),
     offerId: idOrNull(get(raw, 'offerId')),
     appointmentId: idOrNull(get(raw, 'appointmentId')),
   };
