@@ -40,7 +40,9 @@ status, postsCount, reportsCount, avatarUrl`.
 
 Needs to also return:
 - [ ] `nationality` — raw 2-char ISO code from `user_profiles.nationality`.
-  Frontend does the code→name lookup.
+  Frontend does the code→name lookup. Optional since sign-up stopped asking
+  for it (Nov 2026, App Review 5.1.1(v)), so NULL is normal for new
+  accounts; the dashboard shows it on user detail only.
 - [ ] `suburb` — `user_profiles.suburb`
 - [ ] `stateCode` — `user_profiles.state_code`
 - [ ] `emailVerified` — `users.email_verified`
@@ -53,6 +55,17 @@ Needs to also return:
   aliasing `updated_at`)
 - [ ] `totalPurchases` — aggregation (see below)
 - [ ] `totalSales` — aggregation (see below)
+- [~] `ageConfirmedAt` — `age_confirmed_at` from the account's sign-up
+  `tos_acceptances` row (ISO or null). Sign-up has asked for no date of
+  birth since Nov 2026; its "I confirm I am 18 years or older" box is the
+  age evidence for every account created since, and this is when the
+  server recorded it. NULL when sign-up proved age with a date of birth
+  (older app builds) or predates the column; never backfilled.
+- [~] `dobOnFile` — `user_profiles.dob IS NOT NULL`, a boolean rather than
+  the date, so user detail can tell "age proven by a date of birth" from
+  "no age record" without showing anyone's birthday.
+  Both are on miteApp branch `feat/admin-user-age-check`. User detail's Age
+  row stays hidden until the backend sends both keys.
 
 ### Aggregations (no new columns; `AdminService.getUser` changes only)
 

@@ -724,6 +724,11 @@ function threadType(value: unknown): ThreadType {
 function normaliseUser(raw: unknown): AdminUser | null {
   const id = idOrNull(get(raw, 'id'));
   if (!id) return null;
+  // Only the detail sends these, and only from a backend that has them. JSON
+  // carries no `undefined`, so a missing key stays undefined here and the
+  // profile hides its age row instead of reporting "no record" for everyone.
+  const ageConfirmedAt = get(raw, 'ageConfirmedAt');
+  const dobOnFile = get(raw, 'dobOnFile');
   return {
     id,
     // The backend already defaults this to `user_${id}`; the empty string is
@@ -745,6 +750,8 @@ function normaliseUser(raw: unknown): AdminUser | null {
     // Tri-state on purpose: `null` means the profile has no suburb at all,
     // which the checklist renders differently from "has one, not verified".
     suburbVerified: boolOrNull(get(raw, 'suburbVerified')),
+    ageConfirmedAt: ageConfirmedAt === undefined ? undefined : isoOrNull(ageConfirmedAt),
+    dobOnFile: dobOnFile === undefined ? undefined : bool(dobOnFile),
     signUpAt: isoOrNull(get(raw, 'signUpAt')),
     signInAt: isoOrNull(get(raw, 'signInAt')),
     totalPurchases: numOrNull(get(raw, 'totalPurchases')),

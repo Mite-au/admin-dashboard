@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { formatCountry, formatDate } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import type { AdminUser } from '@/lib/types';
 
 function formatVerificationStatus(seller: AdminUser) {
@@ -65,7 +65,6 @@ export function SellerCard({
         <InfoField label="Phone" value={seller.phone ?? '—'} />
         <InfoField label="Email" value={seller.email ?? '—'} />
         <InfoField label="Verification" value={formatVerificationStatus(seller)} />
-        <InfoField label="Nationality" value={formatCountry(seller.nationality)} />
         <InfoField label="Suburb" value={seller.suburb ?? '—'} />
         <InfoField
           label="Sign up date"

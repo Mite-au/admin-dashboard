@@ -2,15 +2,15 @@
 
 import { Download } from 'lucide-react';
 import { exportToCsv } from '@/components/ExportCsvButton';
-import { formatCountry, formatDate } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import type { AdminUser } from '@/lib/types';
 
+/** Kept to the users table's fields: one the table drops, the file drops too. */
 const CSV_COLUMNS = [
   { key: 'name', label: 'User name' },
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Phone' },
   { key: 'memberId', label: 'Member ID' },
-  { key: 'nationality', label: 'Nationality' },
   { key: 'status', label: 'Status' },
   { key: 'joined', label: 'Joined' },
 ];
@@ -33,7 +33,6 @@ export function UsersExportButton({ users }: { users: AdminUser[] }) {
       email: u.email ?? '',
       phone: u.phone ?? '',
       memberId: `m${u.id}`,
-      nationality: formatCountry(u.nationality),
       status: u.status,
       joined: formatDate(u.signUpAt ?? u.createdAt),
     }));

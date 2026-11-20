@@ -9,7 +9,7 @@ import { SearchCard, SearchField } from '@/components/SearchCard';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Card, EmptyState } from '@/components/ui';
-import { formatCountry, formatDateTime, formatRelative } from '@/lib/format';
+import { formatDateTime, formatRelative } from '@/lib/format';
 import type { UserFilters } from '@/lib/fetchers';
 import type { AdminUser, Paged } from '@/lib/types';
 
@@ -178,12 +178,14 @@ export function UsersClient({
             >
               <table className="data-table">
                 <thead>
+                  {/* No Nationality column: sign-up stopped asking for it
+                      (App Review 5.1.1(v)), so it would be blank for every
+                      new account. User detail still shows it, as optional. */}
                   <tr>
                     <th>User name</th>
                     <th>Email</th>
                     <th>Phone</th>
                     <th>Member ID</th>
-                    <th>Nationality</th>
                     <th>Joined</th>
                     <th className="text-right">Status</th>
                     <th className="w-10" aria-label="Open" />
@@ -209,7 +211,6 @@ export function UsersClient({
                         <td>{u.email ?? '—'}</td>
                         <td className="tnum">{u.phone ?? '—'}</td>
                         <td className="tnum">m{u.id}</td>
-                        <td>{formatCountry(u.nationality)}</td>
                         <td title={formatDateTime(joined)}>{formatRelative(joined)}</td>
                         <td className="text-right">
                           <StatusBadge status={u.status} />

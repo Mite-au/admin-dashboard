@@ -45,7 +45,12 @@ export interface AdminUser {
   postsCount: number;
   reportsCount: number;
   avatarUrl?: string | null;
-  /** ISO 3166-1 alpha-2 country code (e.g. "AU", "KR"). Frontend renders it to a name. */
+  /**
+   * ISO 3166-1 alpha-2 country code (e.g. "AU", "KR"). Frontend renders it to a name.
+   * Optional and self-reported: sign-up stopped asking for it in Nov 2026 (App
+   * Review 5.1.1(v)), so null is the normal state of any account created since.
+   * A member can still add one under Personal information in the app.
+   */
   nationality?: string | null;
   /** Suburb label. */
   suburb?: string | null;
@@ -55,6 +60,15 @@ export interface AdminUser {
   phoneVerified?: boolean;
   /** True if suburb has been admin-verified; null if there's no suburb at all. */
   suburbVerified?: boolean | null;
+  /**
+   * When sign-up recorded the member's "I confirm I am 18 years or older" box
+   * (ISO), or null. Sign-up has asked for no date of birth since Nov 2026, so
+   * this is a new account's only age evidence. `undefined` means the backend
+   * doesn't send the field yet, which is not the same claim as null.
+   */
+  ageConfirmedAt?: string | null;
+  /** Whether a date of birth is on file. The date itself never reaches the dashboard. */
+  dobOnFile?: boolean;
   /** ISO dates. signInAt = users.last_sign_in_at, lastActiveAt = users.last_active_at. */
   signUpAt?: string | null;
   signInAt?: string | null;

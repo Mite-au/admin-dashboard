@@ -25,6 +25,7 @@ import { VerificationChecklist } from './VerificationChecklist';
 export function ProfilePanel({ user }: { user: AdminUser }) {
   const displayName = user.name?.trim() || 'Unnamed account';
   const joinedAt = user.signUpAt ?? user.createdAt;
+  const age = ageEvidence(user);
 
   return (
     <div className="space-y-6 lg:col-span-4">
@@ -64,7 +65,15 @@ export function ProfilePanel({ user }: { user: AdminUser }) {
 
       <Card title="Account">
         <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
-          <Fact label="Nationality" value={formatCountry(user.nationality)} />
+          {age && <Fact label="Age" value={age.value} title={age.title} wide />}
+          {/* Optional since sign-up stopped asking for it (App Review
+              5.1.1(v)), so empty is the normal state of a new account: it
+              says the member hasn't added one, not that data is missing. */}
+          <Fact
+            label="Nationality"
+            value={user.nationality ? formatCountry(user.nationality) : 'Not provided'}
+            title="Optional. Sign-up no longer asks for it; a member can add it under Personal information in the app."
+          />
           <Fact label="State" value={user.stateCode || '—'} />
           <Fact label="Joined" value={formatDate(joinedAt)} title={formatDateTime(joinedAt)} />
           <Fact
@@ -98,6 +107,32 @@ export function ProfilePanel({ user }: { user: AdminUser }) {
   );
 }
 
+/**
+ * What the account holds as evidence of being 18 or older. Sign-up has asked
+ * for no date of birth since Nov 2026 (App Review 5.1.1(v)), so the 18+ box is
+ * a new account's only evidence; an older build proved age with a date of
+ * birth instead, which the backend reports only as being on file.
+ *
+ * Null when the backend doesn't send the fields yet: an absent key is not the
+ * same claim as "no record", and showing that for every account would be wrong.
+ */
+function ageEvidence(user: AdminUser): { value: string; title: string } | null {
+  if (user.ageConfirmedAt === undefined || user.dobOnFile === undefined) return null;
+  if (user.ageConfirmedAt) {
+    return {
+      value: 'Confirmed 18+ at sign-up',
+      title: `Ticked "I confirm I am 18 years or older" on ${formatDateTime(user.ageConfirmedAt)}`,
+    };
+  }
+  if (user.dobOnFile) {
+    return {
+      value: 'Date of birth on file',
+      title: 'Proven with a date of birth, as sign-up did before the 18+ box. The date itself is not shown here.',
+    };
+  }
+  return { value: 'No record', title: 'No 18+ confirmation and no date of birth on file.' };
+}
+
 function Avatar({ src, name }: { src?: string | null; name: string }) {
   if (isImageSrc(src)) {
     return (
@@ -126,14 +161,17 @@ function Fact({
   value,
   title,
   numeric,
+  wide,
 }: {
   label: string;
   value: string;
   title?: string;
   numeric?: boolean;
+  /** Spans both columns, so the pairs below it stay paired. */
+  wide?: boolean;
 }) {
   return (
-    <div className="min-w-0">
+    <div className={`min-w-0${wide ? ' col-span-2' : ''}`}>
       <dt className="label-micro">{label}</dt>
       <dd
         title={title}
