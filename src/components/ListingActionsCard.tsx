@@ -11,9 +11,12 @@ import type { AdminPost, PostStatus } from '@/lib/types';
 
 type ActionVariant = 'primary' | 'secondary' | 'danger';
 
+/** Statuses the action can set. `reserved` is not one; see actions.ts. */
+type MutablePostStatus = Parameters<typeof updatePostStatusResult>[1];
+
 type PostAction = {
   label: string;
-  status: PostStatus;
+  status: MutablePostStatus;
   variant: ActionVariant;
   show: (current: PostStatus) => boolean;
 };
@@ -53,7 +56,7 @@ type ModalConfig = {
   confirmLabel: string;
 };
 
-const CONFIRM_REQUIRED = new Set<PostStatus>(['paused', 'archived', 'deleted']);
+const CONFIRM_REQUIRED = new Set<MutablePostStatus>(['paused', 'archived', 'deleted']);
 
 /** Each confirm label repeats the button that opened it, so the action keeps
  *  the same name from the trigger through to the confirmation. */
@@ -90,12 +93,12 @@ const VARIANT_CLASS: Record<ActionVariant, string> = {
 
 export function ListingActionsCard({ post }: { post: AdminPost }) {
   const router = useRouter();
-  const [pendingStatus, setPendingStatus] = useState<PostStatus | null>(null);
-  const [confirmTarget, setConfirmTarget] = useState<PostStatus | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<MutablePostStatus | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<MutablePostStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const executeStatusChange = async (next: PostStatus) => {
+  const executeStatusChange = async (next: MutablePostStatus) => {
     if (pendingStatus !== null || next === post.status) return;
     setPendingStatus(next);
     setError(null);
@@ -119,7 +122,7 @@ export function ListingActionsCard({ post }: { post: AdminPost }) {
     router.refresh();
   };
 
-  const handleActionClick = (next: PostStatus) => {
+  const handleActionClick = (next: MutablePostStatus) => {
     setError(null);
     if (CONFIRM_REQUIRED.has(next)) {
       setConfirmTarget(next);

@@ -15,7 +15,7 @@ import type { PostFilters } from '@/lib/fetchers';
 import type { AdminPost, Paged } from '@/lib/types';
 
 /**
- * The six real `posts_status` members plus `reported`, a synthetic filter the
+ * The seven real `posts_status` members plus `reported`, a synthetic filter the
  * backend resolves to "has at least one post report" — the moderation view for
  * this list. An empty value sends no `status`, which is what the backend's own
  * `all` means, so there is no separate "all" option to add.
@@ -23,6 +23,7 @@ import type { AdminPost, Paged } from '@/lib/types';
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
   { value: 'published', label: 'Published' },
+  { value: 'reserved', label: 'Reserved' },
   { value: 'draft', label: 'Draft' },
   { value: 'sold', label: 'Sold' },
   { value: 'paused', label: 'Paused' },

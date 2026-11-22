@@ -21,6 +21,10 @@ const map: Record<string, string> = {
 
   // Post statuses
   published: 'pill-success',
+  // Held for one buyer until both sides confirm the trade. It is no longer on
+  // sale but not sold yet, and can still go back to published, so it reads as
+  // in-flight (like paused) rather than finished (like sold).
+  reserved: 'pill-warning',
   sold: 'pill-neutral',
   paused: 'pill-warning',
   archived: 'pill-neutral',

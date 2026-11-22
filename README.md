@@ -11,9 +11,9 @@ Admin dashboard for the [Mite marketplace](../miteApp) backend. Built with
 - **Users** – paginated user table with status filter pills and search.
   User detail page with moderation actions (suspend / ban) and the user's
   recent listings.
-- **Listings** – paginated listings table with filter pills (published / sold
-  / paused / archived / reported). Listing detail page with photo gallery
-  and moderation actions (archive / remove).
+- **Listings** – paginated listings table with filter pills (published /
+  reserved / sold / paused / archived / reported). Listing detail page with
+  photo gallery and moderation actions (archive / remove).
 - **Transactions** – paginated transactions table with status filters.
 - **Threads** – community thread moderation (active / flagged / archived).
 - **Reports / Settings** – placeholders wired up for future endpoints.
