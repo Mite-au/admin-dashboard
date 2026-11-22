@@ -9,7 +9,7 @@ import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
 import { exportToCsv } from '@/components/ExportCsvButton';
 import { Card, EmptyState } from '@/components/ui';
-import { formatDate, formatDateTime, formatMoney, formatNumber } from '@/lib/format';
+import { formatDate, formatDateTime, formatNumber, formatTradeAmount } from '@/lib/format';
 import type { TransactionFilters } from '@/lib/fetchers';
 import type { AdminTransaction, Paged } from '@/lib/types';
 
@@ -259,7 +259,7 @@ export function TransactionsClient({
                       <td>{t.buyer}</td>
                       <td>{t.seller}</td>
                       <td className="text-right font-medium text-ink-900">
-                        {formatMoney(t.amount, t.currency)}
+                        {formatTradeAmount(t)}
                       </td>
                       <td className="pr-5 text-right">
                         <StatusBadge status={t.status} />

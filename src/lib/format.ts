@@ -1,3 +1,5 @@
+import type { TradeSourceType } from './types';
+
 /**
  * All four formatters take whatever the backend sent. `Intl` throws on a bad
  * currency code and `new Date(null)` silently means 1970, so null/garbage is
@@ -48,6 +50,18 @@ export function formatMoney(
 export function formatNumber(value: number | null | undefined) {
   const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
   return new Intl.NumberFormat('en-AU').format(n);
+}
+
+/**
+ * A trade row's amount. A Free trade reads "Free", the label the app gives a
+ * free listing, never a $0 amount; every other row is its money.
+ */
+export function formatTradeAmount(trade: {
+  amount: number;
+  currency: string;
+  sourceType: TradeSourceType;
+}) {
+  return trade.sourceType === 'free_trade' ? 'Free' : formatMoney(trade.amount, trade.currency);
 }
 
 /**

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ShoppingBag } from 'lucide-react';
 import { StatusBadge } from '@/components/StatusBadge';
 import { EmptyState } from '@/components/ui';
-import { formatDateTime, formatMoney, formatRelative } from '@/lib/format';
+import { formatDateTime, formatRelative, formatTradeAmount } from '@/lib/format';
 import type { AdminPurchaseParty, AdminUserPurchase, Paged } from '@/lib/types';
 import { TableScroll, TruncationNote } from './ActivityChrome';
 
@@ -51,7 +51,7 @@ export function PurchasesTable({ purchases }: { purchases: Paged<AdminUserPurcha
                   </td>
                   <td>{t.category ?? '—'}</td>
                   <td className="tnum text-right text-ink-900">
-                    {formatMoney(t.amount, t.currency)}
+                    {formatTradeAmount(t)}
                   </td>
                   <td title={formatDateTime(when)}>{formatRelative(when)}</td>
                   <td className="text-right">
